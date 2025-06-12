@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import SacredTracker from './SacredTracker';
@@ -37,13 +38,8 @@ const UnifiedSunClock = () => {
     setIsInPrimeWindow(currentlyInPrime);
   }, [currentlyInPrime]);
 
-  // Determine current phase for sacred tracker
-  const getCurrentPhase = () => {
-    if (inMorningPrime) return 'Dawn';
-    if (inEveningPrime) return 'Dusk';
-    if (hours >= 6 && hours < 18) return 'Day';
-    return 'Night';
-  };
+  // Calculate sun position (0-360 degrees)
+  const sunAngle = (totalMinutes / (24 * 60)) * 360;
 
   // Enhanced painterly color palette based on time
   const getTimeColors = () => {
@@ -101,16 +97,7 @@ const UnifiedSunClock = () => {
         <div className={`absolute top-1/6 left-1/5 w-96 h-64 bg-gradient-to-br ${colors.textured} opacity-50 rounded-full blur-3xl animate-float transform rotate-12`}></div>
         <div className={`absolute bottom-1/4 right-1/6 w-80 h-96 bg-gradient-to-tl ${colors.textured} opacity-40 rounded-full blur-2xl animate-float delay-500 transform -rotate-12`}></div>
         <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-radial ${colors.secondary} opacity-30 rounded-full blur-xl animate-pulse delay-1000`}></div>
-        
-        <div className={`absolute top-3/4 left-1/8 w-48 h-48 bg-gradient-to-br ${colors.textured} opacity-35 rounded-full blur-2xl animate-float delay-1500 transform rotate-45`}></div>
-        <div className={`absolute top-1/8 right-1/4 w-64 h-32 bg-gradient-to-l ${colors.textured} opacity-45 rounded-full blur-xl animate-float delay-2000 transform -rotate-6`}></div>
       </div>
-
-      <div className="absolute inset-0 opacity-20" style={{
-        backgroundImage: `radial-gradient(circle at 25% 25%, ${colors.textured.includes('amber') ? '#fbbf24' : colors.textured.includes('blue') ? '#3b82f6' : colors.textured.includes('red') ? '#ef4444' : '#8b5cf6'}20 2px, transparent 2px),
-                         radial-gradient(circle at 75% 75%, ${colors.textured.includes('amber') ? '#f59e0b' : colors.textured.includes('blue') ? '#1d4ed8' : colors.textured.includes('red') ? '#dc2626' : '#7c3aed'}15 1px, transparent 1px)`,
-        backgroundSize: '30px 30px, 20px 20px'
-      }}></div>
 
       <div className="relative z-10 max-w-4xl mx-auto">
         {/* Header */}
@@ -118,130 +105,91 @@ const UnifiedSunClock = () => {
           <h1 className="text-6xl font-light text-white drop-shadow-2xl mb-2 tracking-wide" style={{
             textShadow: '0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.3)'
           }}>SolCue</h1>
-          <p className="text-xl text-white/95 drop-shadow-lg tracking-wider font-light">Sacred Solar Rhythms</p>
+          <p className="text-xl text-white/95 drop-shadow-lg tracking-wider font-light">Circadian Light Tracker</p>
         </div>
-
-        {/* Prime Time Status */}
-        {isInPrimeWindow && (
-          <div className={`mb-8 px-10 py-5 rounded-full ${colors.accent} ${colors.glow} shadow-2xl animate-breathe relative overflow-hidden mx-auto max-w-md`}>
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 rounded-full"></div>
-            <div className="relative flex items-center justify-center space-x-4">
-              <Sun className="w-6 h-6 text-white animate-spin drop-shadow-lg" style={{ animationDuration: '8s' }} />
-              <span className="text-white font-light text-lg tracking-wide drop-shadow-lg">Sacred Window Open</span>
-              <Sun className="w-6 h-6 text-white animate-spin drop-shadow-lg" style={{ animationDuration: '8s' }} />
-            </div>
-          </div>
-        )}
 
         {/* Main Clock Container */}
         <div className="flex flex-col items-center">
           <div className="relative">
-            {/* Outermost atmospheric ring */}
-            <div className={`absolute -inset-4 rounded-full bg-gradient-to-br ${colors.atmospheric} opacity-40 blur-sm animate-pulse`}></div>
-            
-            <div className={`w-80 h-80 rounded-full bg-gradient-to-br ${colors.accent} ${colors.glow} shadow-2xl animate-breathe flex items-center justify-center transition-all duration-2000 relative overflow-hidden`}>
+            {/* Main Clock Face */}
+            <div className="w-80 h-80 rounded-full relative">
+              {/* Clock Face Background */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-sm border-4 border-white/20"></div>
               
-              <div className="absolute inset-0 rounded-full opacity-30" style={{
-                background: `conic-gradient(from 0deg, 
-                  ${colors.textured.includes('amber') ? '#fbbf24' : colors.textured.includes('blue') ? '#3b82f6' : colors.textured.includes('red') ? '#ef4444' : '#8b5cf6'}20 0deg,
-                  transparent 60deg,
-                  ${colors.textured.includes('amber') ? '#f59e0b' : colors.textured.includes('blue') ? '#1d4ed8' : colors.textured.includes('red') ? '#dc2626' : '#7c3aed'}15 120deg,
-                  transparent 180deg,
-                  ${colors.textured.includes('amber') ? '#fbbf24' : colors.textured.includes('blue') ? '#3b82f6' : colors.textured.includes('red') ? '#ef4444' : '#8b5cf6'}10 240deg,
-                  transparent 300deg,
-                  ${colors.textured.includes('amber') ? '#f59e0b' : colors.textured.includes('blue') ? '#1d4ed8' : colors.textured.includes('red') ? '#dc2626' : '#7c3aed'}20 360deg)`
-              }}></div>
-              
-              <div className="w-72 h-72 rounded-full bg-white/25 backdrop-blur-sm border-2 border-white/40 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
+              {/* 24-Hour Labels */}
+              {Array.from({ length: 24 }, (_, i) => {
+                const angle = (i * 15) - 90; // Start from top (12a)
+                const radian = (angle * Math.PI) / 180;
+                const radius = 130;
+                const x = Math.cos(radian) * radius;
+                const y = Math.sin(radian) * radius;
                 
-                <div className="absolute inset-0 rounded-full" style={{
-                  backgroundImage: `radial-gradient(circle at center, transparent 40%, ${colors.textured.includes('amber') ? '#fbbf24' : colors.textured.includes('blue') ? '#3b82f6' : colors.textured.includes('red') ? '#ef4444' : '#8b5cf6'}10 45%, transparent 50%)`,
-                  backgroundSize: '40px 40px'
-                }}></div>
-                
-                <div className="text-center mb-6 relative z-10">
-                  <div className="text-5xl font-light text-white drop-shadow-2xl tracking-wider" style={{
+                return (
+                  <div
+                    key={i}
+                    className="absolute text-white/80 text-sm font-light"
+                    style={{
+                      left: `calc(50% + ${x}px - 12px)`,
+                      top: `calc(50% + ${y}px - 8px)`,
+                      width: '24px',
+                      height: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i-12}p`}
+                  </div>
+                );
+              })}
+
+              {/* Sun Position Indicator */}
+              <div
+                className="absolute w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg transform -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  left: `calc(50% + ${Math.cos((sunAngle - 90) * Math.PI / 180) * 100}px)`,
+                  top: `calc(50% + ${Math.sin((sunAngle - 90) * Math.PI / 180) * 100}px)`,
+                  boxShadow: '0 0 20px rgba(255, 193, 7, 0.8)'
+                }}
+              >
+                <div className="absolute inset-0 rounded-full bg-white/30 animate-pulse"></div>
+              </div>
+
+              {/* Center Time Display */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="text-center">
+                  <div className="text-4xl font-light text-white drop-shadow-2xl tracking-wider mb-2" style={{
                     textShadow: '0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.4)'
                   }}>
                     {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  <div className="text-lg text-white/95 drop-shadow-lg mt-2 tracking-wide font-light">
+                  <div className="text-sm text-white/90 drop-shadow-lg tracking-wide font-light">
                     {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
                   </div>
                 </div>
-
-                <div className="flex items-center space-x-3 text-white/95 relative z-10">
-                  {hours >= 6 && hours < 18 ? (
-                    <Sun className="w-9 h-9 animate-spin drop-shadow-lg" style={{ 
-                      animationDuration: '20s',
-                      filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.6))'
-                    }} />
-                  ) : (
-                    <Moon className="w-9 h-9 drop-shadow-lg" style={{
-                      filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.6))'
-                    }} />
-                  )}
-                  <span className="font-light text-lg tracking-wide drop-shadow-lg">
-                    {getCurrentPhase()}
-                  </span>
-                </div>
-
-                <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-white/5 to-transparent rounded-full"></div>
-                <div className="absolute inset-0 bg-gradient-to-tl from-transparent via-white/10 to-white/20 rounded-full"></div>
               </div>
-            </div>
 
-            {/* Enhanced orbital elements with trails */}
-            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '60s' }}>
-              <div className={`absolute top-1 left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full ${colors.accent} ${colors.glow} shadow-lg`}>
-                <div className="absolute inset-0 rounded-full bg-white/40 animate-pulse"></div>
-              </div>
-            </div>
-            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '45s', animationDirection: 'reverse' }}>
-              <div className={`absolute bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-3 rounded-full bg-white/80 shadow-xl`}>
-                <div className="absolute inset-0 rounded-full bg-white animate-pulse"></div>
-              </div>
-            </div>
-            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '90s' }}>
-              <div className={`absolute top-1/2 right-1 transform -translate-y-1/2 w-2 h-2 rounded-full bg-white/60 shadow-lg`}></div>
+              {/* Prime Time Glow Effect */}
+              {isInPrimeWindow && (
+                <div className="absolute inset-0 rounded-full animate-pulse" style={{
+                  boxShadow: '0 0 40px rgba(255, 193, 7, 0.6), inset 0 0 40px rgba(255, 193, 7, 0.2)'
+                }}></div>
+              )}
             </div>
           </div>
 
-          {/* Sacred Tracker - New gentle tracking component */}
+          {/* Start Light Session Button */}
+          <div className="mt-8">
+            <button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-4 px-12 rounded-full text-lg shadow-2xl transition-all duration-300 transform hover:scale-105">
+              Start Light Session
+            </button>
+          </div>
+
+          {/* Circadian Tracker - New gentle tracking component */}
           <SacredTracker 
             isInPrimeWindow={isInPrimeWindow} 
-            currentPhase={getCurrentPhase()}
+            currentPhase={hours >= 6 && hours < 18 ? 'Day' : 'Night'}
           />
-
-          {/* Sacred Windows Visualization - Simplified */}
-          <div className="mt-10 w-full max-w-md">
-            <div className="bg-white/25 backdrop-blur-md rounded-2xl p-8 border-2 border-white/40 shadow-2xl relative overflow-hidden">
-              <div className="absolute inset-0 opacity-20" style={{
-                backgroundImage: `linear-gradient(45deg, ${colors.textured.includes('amber') ? '#fbbf24' : colors.textured.includes('blue') ? '#3b82f6' : colors.textured.includes('red') ? '#ef4444' : '#8b5cf6'}10 25%, transparent 25%), linear-gradient(-45deg, ${colors.textured.includes('amber') ? '#f59e0b' : colors.textured.includes('blue') ? '#1d4ed8' : colors.textured.includes('red') ? '#dc2626' : '#7c3aed'}10 25%, transparent 25%)`,
-                backgroundSize: '20px 20px'
-              }}></div>
-              
-              <h3 className="text-white font-light mb-6 text-center text-lg tracking-wide drop-shadow-lg relative z-10">Sacred Windows</h3>
-              
-              <div className="space-y-4 relative z-10">
-                <div className={`flex items-center justify-between p-4 rounded-xl transition-all duration-700 border ${inMorningPrime ? `bg-gradient-to-r ${colors.textured} border-yellow-300/60 shadow-lg` : 'bg-white/15 border-white/30'}`}>
-                  <div className="flex items-center space-x-3">
-                    <Sun className="w-5 h-5 text-white drop-shadow" />
-                    <span className="text-white font-light tracking-wide">Dawn Flow</span>
-                  </div>
-                  <span className="text-white font-mono tracking-wider drop-shadow text-sm">5:45 - 8:15</span>
-                </div>
-                
-                <div className={`flex items-center justify-between p-4 rounded-xl transition-all duration-700 border ${inEveningPrime ? `bg-gradient-to-r ${colors.textured} border-orange-300/60 shadow-lg` : 'bg-white/15 border-white/30'}`}>
-                  <div className="flex items-center space-x-3">
-                    <Sun className="w-5 h-5 text-white drop-shadow" />
-                    <span className="text-white font-light tracking-wide">Dusk Flow</span>
-                  </div>
-                  <span className="text-white font-mono tracking-wider drop-shadow text-sm">3:45 - 6:15</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

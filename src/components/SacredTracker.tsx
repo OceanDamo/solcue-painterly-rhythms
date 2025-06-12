@@ -28,7 +28,7 @@ const SacredTracker: React.FC<SacredTrackerProps> = ({ isInPrimeWindow, currentP
           onClick={() => setShowTracker(true)}
           className="text-white/60 hover:text-white/80 text-sm font-light tracking-wide"
         >
-          Gentle Tracking ✨
+          Optional Tracking ✨
         </Button>
       </div>
     );
@@ -37,7 +37,7 @@ const SacredTracker: React.FC<SacredTrackerProps> = ({ isInPrimeWindow, currentP
   return (
     <Card className="bg-white/10 backdrop-blur-md border-white/20 p-6 mt-6">
       <div className="text-center mb-6">
-        <h3 className="text-white font-light text-lg mb-2">Sacred Moments Today</h3>
+        <h3 className="text-white font-light text-lg mb-2">Light Exposure Today</h3>
         <p className="text-white/70 text-sm font-light">
           Optional reflection • No pressure, only presence
         </p>
@@ -64,7 +64,7 @@ const SacredTracker: React.FC<SacredTrackerProps> = ({ isInPrimeWindow, currentP
         </div>
         <div className="text-center">
           <div className="text-2xl font-light text-blue-300 mb-1">{todaysMinutes}</div>
-          <div className="text-xs text-white/60 font-light">Minutes in Nature</div>
+          <div className="text-xs text-white/60 font-light">Minutes in Light</div>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ const SacredTracker: React.FC<SacredTrackerProps> = ({ isInPrimeWindow, currentP
         <p className="text-white/70 text-sm font-light italic">
           {isInPrimeWindow 
             ? `The ${currentPhase.toLowerCase()} window is open—feel the invitation`
-            : 'Rest in the rhythm • The next sacred window approaches'
+            : 'Rest in the rhythm • The next optimal window approaches'
           }
         </p>
       </div>
