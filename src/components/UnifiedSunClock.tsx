@@ -179,7 +179,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     return { x, y, visible: dec > 0 }; // Only show northern stars
   };
 
-  // Dynamic sun color based on time of day
+  // Enhanced sun glow - more diffuse
   const getSunColor = (currentHour: number, sunTimes: any) => {
     // Sunrise transition: deep orange to golden yellow
     if (currentHour >= sunTimes.sunrise - 0.5 && currentHour <= sunTimes.sunrise + 1) {
@@ -392,21 +392,214 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const hourMarkers = getHourMarkers();
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${theme.background} p-4 flex items-center justify-center relative overflow-hidden`}>
+    <div className={`min-h-screen bg-gradient-to-br ${theme.background} p-4 flex flex-col items-center justify-center relative overflow-hidden`}>
       {/* Atmospheric background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-radial from-blue-400/20 to-transparent rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-radial from-purple-400/20 to-transparent rounded-full blur-2xl animate-pulse delay-1000"></div>
       </div>
 
-      <div className="relative z-10 max-w-2xl mx-auto text-center">
+      <div className="relative z-10 max-w-2xl mx-auto text-center flex-1 flex flex-col justify-center">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white drop-shadow-2xl mb-2 tracking-wide">SolCue</h1>
           <p className="text-lg text-white/90 drop-shadow-lg">Circadian Light Tracker</p>
         </div>
 
-        {/* Control Bar */}
+        {/* Main Clock Container */}
+        <div className="relative flex justify-center items-center mb-8">
+          {/* Clock Face */}
+          <div className="relative w-80 h-80">
+            {/* Background circle */}
+            <div className="absolute inset-0 rounded-full bg-black/30 backdrop-blur-sm border border-white/20"></div>
+            
+            {/* Clock segments - now full pie slices */}
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
+              <defs>
+                <radialGradient id="dynamicSunGlow" cx="50%" cy="50%" r="80%">
+                  <stop offset="0%" stopColor={sunColors.from} stopOpacity="0.9" />
+                  <stop offset="30%" stopColor={sunColors.via} stopOpacity="0.7" />
+                  <stop offset="60%" stopColor={sunColors.to} stopOpacity="0.5" />
+                  <stop offset="80%" stopColor={theme.daylight} stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#e5e7eb" stopOpacity={moonProminence.opacity} />
+                  <stop offset="70%" stopColor="#9ca3af" stopOpacity={moonProminence.opacity * 0.5} />
+                  <stop offset="100%" stopColor="#9ca3af" stopOpacity="0" />
+                </radialGradient>
+              </defs>
+              
+              {timeSegments.map((segment, index) => (
+                <path
+                  key={index}
+                  d={createPieSlice(segment.start, segment.end)}
+                  fill={segment.color}
+                  opacity={segment.isPrime ? 0.9 : 0.7}
+                  className={segment.isPrime && inPrimeWindow ? 'animate-[pulse_8s_ease-in-out_infinite]' : ''}
+                />
+              ))}
+
+              {/* Stars after sunset */}
+              {afterSunset && starData.map((star, index) => {
+                const position = getStarPosition(star.ra, star.dec, currentHour);
+                if (!position.visible) return null;
+                
+                const size = Math.max(1, 4 - star.magnitude);
+                const opacity = Math.max(0.3, 1 - star.magnitude * 0.2);
+                
+                return (
+                  <circle
+                    key={index}
+                    cx={position.x}
+                    cy={position.y}
+                    r={size}
+                    fill="white"
+                    opacity={opacity}
+                    className="animate-[pulse_4s_ease-in-out_infinite]"
+                    style={{ animationDelay: `${index * 200}ms` }}
+                  >
+                    <title>{star.name} - {star.constellation}</title>
+                  </circle>
+                );
+              })}
+            </svg>
+
+            {/* Hour markers */}
+            {clockFormat !== 'none' && hourMarkers.map((marker, index) => {
+              const radius = 135;
+              const x = 160 + Math.cos((marker.angle * Math.PI) / 180) * radius;
+              const y = 160 + Math.sin((marker.angle * Math.PI) / 180) * radius;
+              
+              return (
+                <div
+                  key={index}
+                  className="absolute text-white font-light"
+                  style={{
+                    left: x - 12,
+                    top: y - 10,
+                    fontSize: marker.isMainHour ? '12px' : '10px',
+                    opacity: marker.isMainHour ? 0.8 : 0.5,
+                    fontWeight: '300',
+                    textShadow: '0 0 4px rgba(0,0,0,0.8)'
+                  }}
+                >
+                  {marker.display}
+                </div>
+              );
+            })}
+
+            {/* Enhanced sun indicator with much more diffuse glow */}
+            <div
+              className="absolute -ml-3 -mt-3 transition-all duration-1000"
+              style={{
+                left: 160 + Math.cos((sunAngle * Math.PI) / 180) * 100,
+                top: 160 + Math.sin((sunAngle * Math.PI) / 180) * 100,
+                width: `${24}px`,
+                height: `${24}px`
+              }}
+            >
+              <div className="relative">
+                {/* Much larger, more diffuse sun glow that blends with theme */}
+                <div 
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    marginLeft: '-28px',
+                    marginTop: '-28px',
+                    background: `radial-gradient(circle, ${sunColors.from}70 0%, ${sunColors.via}50 20%, ${sunColors.to}40 35%, ${theme.daylight}30 50%, ${theme.astronomicalTwilight}20 65%, transparent 80%)`,
+                    filter: 'blur(16px)',
+                    animation: 'pulse 6s infinite ease-in-out'
+                  }}
+                ></div>
+                {/* Secondary glow layer for more diffusion */}
+                <div 
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    width: '120px',
+                    height: '120px',
+                    marginLeft: '-48px',
+                    marginTop: '-48px',
+                    background: `radial-gradient(circle, ${sunColors.from}30 0%, ${sunColors.via}20 30%, ${theme.daylight}15 50%, transparent 70%)`,
+                    filter: 'blur(24px)',
+                    animation: 'pulse 8s infinite ease-in-out reverse'
+                  }}
+                ></div>
+                {/* Sun core */}
+                <div 
+                  className="relative z-10 w-6 h-6 rounded-full shadow-lg border border-yellow-300/50"
+                  style={{
+                    background: `linear-gradient(135deg, ${sunColors.from}, ${sunColors.via}, ${sunColors.to})`,
+                    opacity: afterSunset ? 0.4 : 1
+                  }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Enhanced moon indicator with prominence */}
+            {moonData.visible && (
+              <div
+                className="absolute transition-all duration-1000"
+                style={{
+                  left: 160 + Math.cos((moonAngle * Math.PI) / 180) * 100,
+                  top: 160 + Math.sin((moonAngle * Math.PI) / 180) * 100,
+                  width: `${moonProminence.size}px`,
+                  height: `${moonProminence.size}px`,
+                  marginLeft: `-${moonProminence.size/2}px`,
+                  marginTop: `-${moonProminence.size/2}px`
+                }}
+              >
+                <div className="relative">
+                  <div 
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      width: `${moonProminence.glowSize}px`,
+                      height: `${moonProminence.glowSize}px`,
+                      marginLeft: `-${(moonProminence.glowSize - moonProminence.size)/2}px`,
+                      marginTop: `-${(moonProminence.glowSize - moonProminence.size)/2}px`,
+                      background: `radial-gradient(circle, rgba(229, 231, 235, ${moonProminence.opacity}) 0%, rgba(156, 163, 175, ${moonProminence.opacity * 0.5}) 40%, rgba(156, 163, 175, 0) 70%)`,
+                      filter: 'blur(3px)'
+                    }}
+                  ></div>
+                  <div 
+                    className={`relative z-10 rounded-full shadow-md border border-gray-200/50 ${afterSunset ? 'animate-[pulse_6s_ease-in-out_infinite]' : ''}`}
+                    style={{
+                      width: `${moonProminence.size}px`,
+                      height: `${moonProminence.size}px`,
+                      background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb, #d1d5db)',
+                      opacity: moonProminence.opacity
+                    }}
+                  ></div>
+                </div>
+              </div>
+            )}
+
+            {/* Center dot */}
+            <div className="absolute top-1/2 left-1/2 w-2 h-2 -ml-1 -mt-1 bg-white rounded-full shadow-lg"></div>
+          </div>
+        </div>
+
+        {/* Time Display */}
+        <div className="text-center mb-8">
+          <div className="text-3xl font-bold text-white mb-2 drop-shadow-lg">
+            {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+          <div className="text-lg text-white/90">
+            {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="mb-8">
+          <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-full hover:scale-105 transform transition-all duration-300 shadow-lg hover:shadow-blue-500/50">
+            {inPrimeWindow ? 'Start Light Session' : 'Add Manual Session'}
+          </button>
+        </div>
+      </div>
+
+      {/* Control Bar - Moved to Bottom */}
+      <div className="relative z-10 w-full max-w-2xl mx-auto">
         <div className="mb-6 flex gap-4 justify-center">
           {/* Theme Selector */}
           <div>
@@ -495,177 +688,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
           </div>
         )}
 
-        {/* Main Clock Container */}
-        <div className="relative flex justify-center items-center">
-          {/* Clock Face */}
-          <div className="relative w-80 h-80">
-            {/* Background circle */}
-            <div className="absolute inset-0 rounded-full bg-black/30 backdrop-blur-sm border border-white/20"></div>
-            
-            {/* Clock segments - now full pie slices */}
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
-              <defs>
-                <radialGradient id="dynamicSunGlow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor={sunColors.from} stopOpacity="0.8" />
-                  <stop offset="70%" stopColor={sunColors.via} stopOpacity="0.4" />
-                  <stop offset="100%" stopColor={sunColors.to} stopOpacity="0" />
-                </radialGradient>
-                <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#e5e7eb" stopOpacity={moonProminence.opacity} />
-                  <stop offset="70%" stopColor="#9ca3af" stopOpacity={moonProminence.opacity * 0.5} />
-                  <stop offset="100%" stopColor="#9ca3af" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-              
-              {timeSegments.map((segment, index) => (
-                <path
-                  key={index}
-                  d={createPieSlice(segment.start, segment.end)}
-                  fill={segment.color}
-                  opacity={segment.isPrime ? 0.9 : 0.7}
-                  className={segment.isPrime && inPrimeWindow ? 'animate-[pulse_8s_ease-in-out_infinite]' : ''}
-                />
-              ))}
-
-              {/* Stars after sunset */}
-              {afterSunset && starData.map((star, index) => {
-                const position = getStarPosition(star.ra, star.dec, currentHour);
-                if (!position.visible) return null;
-                
-                const size = Math.max(1, 4 - star.magnitude); // Brighter stars are larger
-                const opacity = Math.max(0.3, 1 - star.magnitude * 0.2);
-                
-                return (
-                  <circle
-                    key={index}
-                    cx={position.x}
-                    cy={position.y}
-                    r={size}
-                    fill="white"
-                    opacity={opacity}
-                    className="animate-[pulse_4s_ease-in-out_infinite]"
-                    style={{ animationDelay: `${index * 200}ms` }}
-                  >
-                    <title>{star.name} - {star.constellation}</title>
-                  </circle>
-                );
-              })}
-            </svg>
-
-            {/* Hour markers - only show if not 'none' */}
-            {clockFormat !== 'none' && hourMarkers.map((marker, index) => {
-              const radius = 135;
-              const x = 160 + Math.cos((marker.angle * Math.PI) / 180) * radius;
-              const y = 160 + Math.sin((marker.angle * Math.PI) / 180) * radius;
-              
-              return (
-                <div
-                  key={index}
-                  className="absolute text-white font-light"
-                  style={{
-                    left: x - 12,
-                    top: y - 10,
-                    fontSize: marker.isMainHour ? '12px' : '10px',
-                    opacity: marker.isMainHour ? 0.8 : 0.5,
-                    fontWeight: '300',
-                    textShadow: '0 0 4px rgba(0,0,0,0.8)'
-                  }}
-                >
-                  {marker.display}
-                </div>
-              );
-            })}
-
-            {/* Enhanced sun indicator with constant glow */}
-            <div
-              className="absolute -ml-3 -mt-3 transition-all duration-1000"
-              style={{
-                left: 160 + Math.cos((sunAngle * Math.PI) / 180) * 100,
-                top: 160 + Math.sin((sunAngle * Math.PI) / 180) * 100,
-                width: `${24}px`,
-                height: `${24}px`
-              }}
-            >
-              <div className="relative">
-                {/* Constant sun glow that always blends with theme colors */}
-                <div 
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    marginLeft: '-12px',
-                    marginTop: '-12px',
-                    background: `radial-gradient(circle, ${sunColors.from}90 0%, ${sunColors.via}60 30%, ${sunColors.to}30 50%, ${theme.daylight}20 70%, transparent 85%)`,
-                    filter: 'blur(8px)',
-                    animation: 'pulse 4s infinite ease-in-out'
-                  }}
-                ></div>
-                {/* Sun core */}
-                <div 
-                  className="relative z-10 w-6 h-6 rounded-full shadow-lg border border-yellow-300/50"
-                  style={{
-                    background: `linear-gradient(135deg, ${sunColors.from}, ${sunColors.via}, ${sunColors.to})`,
-                    opacity: afterSunset ? 0.4 : 1
-                  }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Enhanced moon indicator with prominence */}
-            {moonData.visible && (
-              <div
-                className="absolute transition-all duration-1000"
-                style={{
-                  left: 160 + Math.cos((moonAngle * Math.PI) / 180) * 100,
-                  top: 160 + Math.sin((moonAngle * Math.PI) / 180) * 100,
-                  width: `${moonProminence.size}px`,
-                  height: `${moonProminence.size}px`,
-                  marginLeft: `-${moonProminence.size/2}px`,
-                  marginTop: `-${moonProminence.size/2}px`
-                }}
-              >
-                <div className="relative">
-                  <div 
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      width: `${moonProminence.glowSize}px`,
-                      height: `${moonProminence.glowSize}px`,
-                      marginLeft: `-${(moonProminence.glowSize - moonProminence.size)/2}px`,
-                      marginTop: `-${(moonProminence.glowSize - moonProminence.size)/2}px`,
-                      background: `radial-gradient(circle, rgba(229, 231, 235, ${moonProminence.opacity}) 0%, rgba(156, 163, 175, ${moonProminence.opacity * 0.5}) 40%, rgba(156, 163, 175, 0) 70%)`,
-                      filter: 'blur(3px)'
-                    }}
-                  ></div>
-                  <div 
-                    className={`relative z-10 rounded-full shadow-md border border-gray-200/50 ${afterSunset ? 'animate-[pulse_6s_ease-in-out_infinite]' : ''}`}
-                    style={{
-                      width: `${moonProminence.size}px`,
-                      height: `${moonProminence.size}px`,
-                      background: 'linear-gradient(135deg, #f3f4f6, #e5e7eb, #d1d5db)',
-                      opacity: moonProminence.opacity
-                    }}
-                  ></div>
-                </div>
-              </div>
-            )}
-
-            {/* Center dot */}
-            <div className="absolute top-1/2 left-1/2 w-2 h-2 -ml-1 -mt-1 bg-white rounded-full shadow-lg"></div>
-          </div>
-        </div>
-
-        {/* Time Display */}
-        <div className="mt-8 text-center">
-          <div className="text-3xl font-bold text-white mb-2 drop-shadow-lg">
-            {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
-          <div className="text-lg text-white/90">
-            {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
-          </div>
-        </div>
-
         {/* Tide Information */}
-        <div className="mt-8">
+        <div>
           <button 
             onClick={() => setShowTides(!showTides)}
             className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 flex items-center gap-2 mx-auto"
@@ -685,13 +709,6 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               </div>
             </div>
           )}
-        </div>
-
-        {/* Action Button */}
-        <div className="mt-8">
-          <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-full hover:scale-105 transform transition-all duration-300 shadow-lg hover:shadow-blue-500/50">
-            {inPrimeWindow ? 'Start Light Session' : 'Add Manual Session'}
-          </button>
         </div>
       </div>
     </div>
