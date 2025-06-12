@@ -1,8 +1,8 @@
 
-import SolCue from "@/components/SolCue";
+import UnifiedSunClock from "@/components/UnifiedSunClock";
 
 const Index = () => {
-  return <SolCue />;
+  return <UnifiedSunClock />;
 };
 
 export default Index;
