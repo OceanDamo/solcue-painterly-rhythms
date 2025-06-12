@@ -1,17 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Settings } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import SacredTracker from './SacredTracker';
 
 const UnifiedSunClock = () => {
   const [time, setTime] = useState(new Date());
   const [isInPrimeWindow, setIsInPrimeWindow] = useState(false);
+  const [colorTheme, setColorTheme] = useState('natural');
+  const [hourFormat, setHourFormat] = useState('12h');
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date());
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
@@ -38,66 +42,155 @@ const UnifiedSunClock = () => {
     setIsInPrimeWindow(currentlyInPrime);
   }, [currentlyInPrime]);
 
-  // Calculate sun position (0-360 degrees)
-  const sunAngle = (totalMinutes / (24 * 60)) * 360;
-
-  // Enhanced painterly color palette based on time
-  const getTimeColors = () => {
-    if (hours >= 5 && hours < 8) {
-      // Sunrise colors - warm dawn palette
-      return {
-        primary: 'from-rose-300 via-orange-300 via-amber-300 to-yellow-400',
-        secondary: 'from-pink-200 via-orange-200 to-yellow-300',
-        accent: 'bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500',
-        glow: 'shadow-orange-400/60',
-        atmospheric: 'from-orange-200/40 via-pink-300/30 to-yellow-200/20',
-        textured: 'from-amber-500/20 via-orange-400/30 to-rose-400/20'
-      };
-    } else if (hours >= 8 && hours < 17) {
-      // Daytime colors - clear sky palette
-      return {
-        primary: 'from-sky-300 via-blue-400 via-cyan-400 to-teal-400',
-        secondary: 'from-blue-200 via-cyan-200 to-sky-300',
-        accent: 'bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-500',
-        glow: 'shadow-blue-400/60',
-        atmospheric: 'from-cyan-200/40 via-blue-300/30 to-sky-200/20',
-        textured: 'from-blue-500/20 via-cyan-400/30 to-teal-400/20'
-      };
-    } else if (hours >= 17 && hours < 20) {
-      // Sunset colors - dramatic evening palette
-      return {
-        primary: 'from-red-400 via-orange-500 via-pink-500 to-purple-600',
-        secondary: 'from-orange-300 via-red-300 to-pink-400',
-        accent: 'bg-gradient-to-br from-orange-500 via-red-500 to-purple-600',
-        glow: 'shadow-red-400/60',
-        atmospheric: 'from-red-200/40 via-orange-300/30 to-purple-200/20',
-        textured: 'from-red-500/20 via-orange-400/30 to-pink-400/20'
-      };
-    } else {
-      // Night colors - deep cosmic palette
-      return {
-        primary: 'from-indigo-700 via-purple-700 via-blue-800 to-slate-800',
-        secondary: 'from-indigo-400 via-purple-500 to-blue-600',
-        accent: 'bg-gradient-to-br from-indigo-600 via-purple-600 to-slate-700',
-        glow: 'shadow-purple-400/60',
-        atmospheric: 'from-indigo-300/40 via-purple-400/30 to-slate-300/20',
-        textured: 'from-indigo-600/20 via-purple-500/30 to-blue-600/20'
-      };
+  // Color themes
+  const colorThemes = {
+    natural: {
+      daylight: '#FFD700',
+      prime: '#FF8C00',
+      night: '#4A5568',
+      background: 'from-blue-400 via-purple-500 to-pink-500',
+      sunGlow: 'rgba(255, 215, 0, 0.8)'
+    },
+    ocean: {
+      daylight: '#00CED1',
+      prime: '#1E90FF',
+      night: '#191970',
+      background: 'from-cyan-400 via-blue-500 to-indigo-600',
+      sunGlow: 'rgba(0, 206, 209, 0.8)'
+    },
+    forest: {
+      daylight: '#32CD32',
+      prime: '#228B22',
+      night: '#2F4F4F',
+      background: 'from-green-400 via-emerald-500 to-teal-600',
+      sunGlow: 'rgba(50, 205, 50, 0.8)'
+    },
+    sunset: {
+      daylight: '#FF6347',
+      prime: '#FF4500',
+      night: '#8B0000',
+      background: 'from-orange-400 via-red-500 to-purple-600',
+      sunGlow: 'rgba(255, 99, 71, 0.8)'
     }
   };
 
-  const colors = getTimeColors();
+  const currentTheme = colorThemes[colorTheme];
+
+  // Calculate sun position and segments
+  const sunAngle = (totalMinutes / (24 * 60)) * 360;
+  
+  // Generate 24 segments for each hour
+  const generateSegments = () => {
+    const segments = [];
+    for (let i = 0; i < 24; i++) {
+      const segmentStart = i * 15; // Each hour = 15 degrees
+      const segmentEnd = (i + 1) * 15;
+      const hourMinutes = i * 60;
+      
+      // Determine if this hour is in daylight
+      const isDaylight = hourMinutes >= sunriseMinutes && hourMinutes < sunsetMinutes;
+      const isPrimeTime = (hourMinutes >= morningPrimeStart && hourMinutes <= morningPrimeEnd) ||
+                         (hourMinutes >= eveningPrimeStart && hourMinutes <= eveningPrimeEnd);
+      
+      let segmentColor = currentTheme.night;
+      if (isDaylight) {
+        segmentColor = isPrimeTime ? currentTheme.prime : currentTheme.daylight;
+      }
+      
+      // Calculate path for segment
+      const startAngle = (segmentStart - 90) * (Math.PI / 180);
+      const endAngle = (segmentEnd - 90) * (Math.PI / 180);
+      const innerRadius = 80;
+      const outerRadius = 120;
+      
+      const x1 = 160 + Math.cos(startAngle) * innerRadius;
+      const y1 = 160 + Math.sin(startAngle) * innerRadius;
+      const x2 = 160 + Math.cos(endAngle) * innerRadius;
+      const y2 = 160 + Math.sin(endAngle) * innerRadius;
+      const x3 = 160 + Math.cos(endAngle) * outerRadius;
+      const y3 = 160 + Math.sin(endAngle) * outerRadius;
+      const x4 = 160 + Math.cos(startAngle) * outerRadius;
+      const y4 = 160 + Math.sin(startAngle) * outerRadius;
+      
+      const largeArcFlag = segmentEnd - segmentStart <= 180 ? "0" : "1";
+      
+      const pathData = [
+        `M ${x1} ${y1}`,
+        `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+        `L ${x3} ${y3}`,
+        `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}`,
+        'Z'
+      ].join(' ');
+      
+      segments.push(
+        <path
+          key={i}
+          d={pathData}
+          fill={segmentColor}
+          opacity={isDaylight ? 0.8 : 0.3}
+          stroke="rgba(255,255,255,0.2)"
+          strokeWidth="1"
+        />
+      );
+    }
+    return segments;
+  };
+
+  const formatHourLabel = (hour) => {
+    if (hourFormat === '12h') {
+      if (hour === 0) return '12a';
+      if (hour < 12) return `${hour}a`;
+      if (hour === 12) return '12p';
+      return `${hour - 12}p`;
+    }
+    return hour.toString().padStart(2, '0');
+  };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${colors.primary} p-4 transition-all duration-2000 ease-in-out relative overflow-hidden`}>
-      {/* Atmospheric background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className={`absolute top-0 left-0 w-full h-full bg-gradient-radial ${colors.atmospheric} opacity-60 animate-breathe`}></div>
-        
-        <div className={`absolute top-1/6 left-1/5 w-96 h-64 bg-gradient-to-br ${colors.textured} opacity-50 rounded-full blur-3xl animate-float transform rotate-12`}></div>
-        <div className={`absolute bottom-1/4 right-1/6 w-80 h-96 bg-gradient-to-tl ${colors.textured} opacity-40 rounded-full blur-2xl animate-float delay-500 transform -rotate-12`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-radial ${colors.secondary} opacity-30 rounded-full blur-xl animate-pulse delay-1000`}></div>
-      </div>
+    <div className={`min-h-screen bg-gradient-to-br ${currentTheme.background} p-4 transition-all duration-1000 ease-in-out relative overflow-hidden`}>
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="absolute top-4 right-4 z-20 bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+          <div className="space-y-4">
+            <div>
+              <label className="text-white text-sm font-light mb-2 block">Color Theme</label>
+              <Select value={colorTheme} onValueChange={setColorTheme}>
+                <SelectTrigger className="w-32 bg-white/20 border-white/30 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="natural">Natural</SelectItem>
+                  <SelectItem value="ocean">Ocean</SelectItem>
+                  <SelectItem value="forest">Forest</SelectItem>
+                  <SelectItem value="sunset">Sunset</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-white text-sm font-light mb-2 block">Hour Format</label>
+              <Select value={hourFormat} onValueChange={setHourFormat}>
+                <SelectTrigger className="w-32 bg-white/20 border-white/30 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="12h">12 Hour</SelectItem>
+                  <SelectItem value="24h">24 Hour</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setShowSettings(!showSettings)}
+        className="absolute top-4 right-4 z-10 text-white/80 hover:text-white"
+      >
+        <Settings className="w-5 h-5" />
+      </Button>
 
       <div className="relative z-10 max-w-4xl mx-auto">
         {/* Header */}
@@ -111,48 +204,50 @@ const UnifiedSunClock = () => {
         {/* Main Clock Container */}
         <div className="flex flex-col items-center">
           <div className="relative">
-            {/* Main Clock Face */}
+            {/* Radial Sun Clock */}
             <div className="w-80 h-80 rounded-full relative">
-              {/* Clock Face Background */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-sm border-4 border-white/20"></div>
-              
-              {/* 24-Hour Labels */}
-              {Array.from({ length: 24 }, (_, i) => {
-                const angle = (i * 15) - 90; // Start from top (12a)
-                const radian = (angle * Math.PI) / 180;
-                const radius = 130;
-                const x = Math.cos(radian) * radius;
-                const y = Math.sin(radian) * radius;
+              <svg width="320" height="320" className="absolute inset-0">
+                {/* Clock face background */}
+                <circle cx="160" cy="160" r="140" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
                 
-                return (
-                  <div
-                    key={i}
-                    className="absolute text-white/80 text-sm font-light"
-                    style={{
-                      left: `calc(50% + ${x}px - 12px)`,
-                      top: `calc(50% + ${y}px - 8px)`,
-                      width: '24px',
-                      height: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i-12}p`}
-                  </div>
-                );
-              })}
+                {/* Hour segments */}
+                {generateSegments()}
+                
+                {/* Hour labels */}
+                {Array.from({ length: 24 }, (_, i) => {
+                  const angle = (i * 15) - 90;
+                  const radian = (angle * Math.PI) / 180;
+                  const radius = 130;
+                  const x = 160 + Math.cos(radian) * radius;
+                  const y = 160 + Math.sin(radian) * radius;
+                  
+                  return (
+                    <text
+                      key={i}
+                      x={x}
+                      y={y + 4}
+                      textAnchor="middle"
+                      fill="rgba(255,255,255,0.8)"
+                      fontSize="11"
+                      fontWeight="300"
+                    >
+                      {formatHourLabel(i)}
+                    </text>
+                  );
+                })}
+              </svg>
 
-              {/* Sun Position Indicator */}
+              {/* Glowing Sun Position */}
               <div
-                className="absolute w-6 h-6 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg transform -translate-x-1/2 -translate-y-1/2"
+                className="absolute w-8 h-8 rounded-full transform -translate-x-1/2 -translate-y-1/2"
                 style={{
                   left: `calc(50% + ${Math.cos((sunAngle - 90) * Math.PI / 180) * 100}px)`,
                   top: `calc(50% + ${Math.sin((sunAngle - 90) * Math.PI / 180) * 100}px)`,
-                  boxShadow: '0 0 20px rgba(255, 193, 7, 0.8)'
+                  background: `radial-gradient(circle, ${currentTheme.sunGlow}, transparent)`,
+                  boxShadow: `0 0 30px ${currentTheme.sunGlow}, 0 0 60px ${currentTheme.sunGlow}`
                 }}
               >
-                <div className="absolute inset-0 rounded-full bg-white/30 animate-pulse"></div>
+                <Sun className="w-full h-full text-white drop-shadow-lg" />
               </div>
 
               {/* Center Time Display */}
@@ -161,7 +256,11 @@ const UnifiedSunClock = () => {
                   <div className="text-4xl font-light text-white drop-shadow-2xl tracking-wider mb-2" style={{
                     textShadow: '0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.4)'
                   }}>
-                    {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {time.toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: hourFormat === '12h'
+                    })}
                   </div>
                   <div className="text-sm text-white/90 drop-shadow-lg tracking-wide font-light">
                     {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
@@ -172,7 +271,7 @@ const UnifiedSunClock = () => {
               {/* Prime Time Glow Effect */}
               {isInPrimeWindow && (
                 <div className="absolute inset-0 rounded-full animate-pulse" style={{
-                  boxShadow: '0 0 40px rgba(255, 193, 7, 0.6), inset 0 0 40px rgba(255, 193, 7, 0.2)'
+                  boxShadow: `0 0 40px ${currentTheme.prime}, inset 0 0 40px rgba(255, 193, 7, 0.2)`
                 }}></div>
               )}
             </div>
@@ -185,7 +284,7 @@ const UnifiedSunClock = () => {
             </button>
           </div>
 
-          {/* Circadian Tracker - New gentle tracking component */}
+          {/* Minimal Tracking Component */}
           <SacredTracker 
             isInPrimeWindow={isInPrimeWindow} 
             currentPhase={hours >= 6 && hours < 18 ? 'Day' : 'Night'}
