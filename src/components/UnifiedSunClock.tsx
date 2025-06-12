@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Waves } from 'lucide-react';
 
 interface UnifiedSunClockProps {
   currentTime?: Date;
@@ -8,6 +8,7 @@ interface UnifiedSunClockProps {
 
 const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Date() }) => {
   const [time, setTime] = useState(currentTime);
+  const [showTides, setShowTides] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -56,24 +57,63 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     };
   };
 
+  // Calculate moon position (simplified - in reality this would be more complex)
+  const calculateMoonPosition = (date: Date) => {
+    // Simplified calculation - moon moves approximately 360° in 29.5 days
+    const moonCycle = 29.5; // days
+    const daysSinceNewMoon = (date.getTime() / (1000 * 60 * 60 * 24)) % moonCycle;
+    const moonPhase = (daysSinceNewMoon / moonCycle) * 360;
+    
+    // Moon rises about 50 minutes later each day
+    const moonDelay = (daysSinceNewMoon * 0.8) % 24;
+    const currentHour = date.getHours() + date.getMinutes() / 60;
+    const moonHour = (currentHour + moonDelay) % 24;
+    
+    return {
+      hour: moonHour,
+      phase: moonPhase,
+      visible: moonHour > 18 || moonHour < 6 // Simplified visibility
+    };
+  };
+
+  // Calculate tide information (simplified)
+  const calculateTides = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    
+    // Simplified tide calculation - 2 high tides per ~24.8 hours
+    const tidePhase = (hours + now.getMinutes() / 60) % 12.4;
+    const isHighTide = tidePhase < 1 || (tidePhase > 5.2 && tidePhase < 7.2);
+    const nextTideHours = isHighTide ? 6.2 - (tidePhase % 6.2) : 6.2 - (tidePhase % 6.2);
+    
+    return {
+      isHigh: isHighTide,
+      nextChange: nextTideHours,
+      height: isHighTide ? '4.3ft' : '0.8ft'
+    };
+  };
+
   // Calculate current time values
   const hours = time.getHours();
   const minutes = time.getMinutes();
   const currentHour = hours + minutes / 60;
   
-  // Get sun times for Providence, RI (you can make this dynamic later)
+  // Get sun times for Providence, RI
   const sunTimes = calculateSunTimes(41.8236, -71.4222, time);
+  const moonData = calculateMoonPosition(time);
+  const tideData = calculateTides();
   
-  // Calculate sun position (0-360 degrees around clock, starting at midnight/top)
-  const sunAngle = hoursToAngle(currentHour) - 90; // -90 to start at top
-
+  // Calculate sun and moon positions (moved off the numbers)
+  const sunAngle = hoursToAngle(currentHour) - 90;
+  const moonAngle = hoursToAngle(moonData.hour) - 90;
+  
   // Check if in prime window
   const inMorningPrime = currentHour >= sunTimes.morningPrimeStart && currentHour <= sunTimes.morningPrimeEnd;
   const inEveningPrime = currentHour >= sunTimes.eveningPrimeStart && currentHour <= sunTimes.eveningPrimeEnd;
   const inPrimeWindow = inMorningPrime || inEveningPrime;
 
-  // Create SVG path for arc segment
-  const createArcPath = (startHour: number, endHour: number, innerRadius: number, outerRadius: number) => {
+  // Create SVG path for pie slice segments (extending to center)
+  const createPieSlice = (startHour: number, endHour: number) => {
     const startAngle = hoursToAngle(startHour) - 90;
     const endAngle = hoursToAngle(endHour) - 90;
     
@@ -82,80 +122,77 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     
     const centerX = 160;
     const centerY = 160;
+    const radius = 120;
     
-    const x1 = centerX + Math.cos(startAngleRad) * innerRadius;
-    const y1 = centerY + Math.sin(startAngleRad) * innerRadius;
-    const x2 = centerX + Math.cos(endAngleRad) * innerRadius;
-    const y2 = centerY + Math.sin(endAngleRad) * innerRadius;
-    const x3 = centerX + Math.cos(endAngleRad) * outerRadius;
-    const y3 = centerY + Math.sin(endAngleRad) * outerRadius;
-    const x4 = centerX + Math.cos(startAngleRad) * outerRadius;
-    const y4 = centerY + Math.sin(startAngleRad) * outerRadius;
+    const x1 = centerX + Math.cos(startAngleRad) * radius;
+    const y1 = centerY + Math.sin(startAngleRad) * radius;
+    const x2 = centerX + Math.cos(endAngleRad) * radius;
+    const y2 = centerY + Math.sin(endAngleRad) * radius;
     
     const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
     
-    return `M ${x1} ${y1} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`;
+    return `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
   };
 
-  // Generate time segments with colors
+  // Generate time segments with colors (full pie slices)
   const timeSegments = [
     // Deep night (astronomical night to astronomical dawn)
     {
       start: 0,
       end: sunTimes.astronomicalNightEnd,
-      color: '#0f172a', // slate-900
+      color: '#0f172a',
       label: 'Deep Night'
     },
     {
       start: sunTimes.astronomicalNightStart,
       end: 24,
-      color: '#0f172a', // slate-900
+      color: '#0f172a',
       label: 'Deep Night'
     },
     // Astronomical twilight
     {
       start: sunTimes.astronomicalNightEnd,
       end: sunTimes.nauticalTwilightEnd,
-      color: '#312e81', // indigo-800
+      color: '#312e81',
       label: 'Astronomical Dawn'
     },
     {
       start: sunTimes.nauticalTwilightStart,
       end: sunTimes.astronomicalNightStart,
-      color: '#312e81', // indigo-800
+      color: '#312e81',
       label: 'Astronomical Dusk'
     },
     // Nautical twilight
     {
       start: sunTimes.nauticalTwilightEnd,
       end: sunTimes.civilTwilightEnd,
-      color: '#1e40af', // blue-800
+      color: '#1e40af',
       label: 'Nautical Dawn'
     },
     {
       start: sunTimes.civilTwilightStart,
       end: sunTimes.nauticalTwilightStart,
-      color: '#1e40af', // blue-800
+      color: '#1e40af',
       label: 'Nautical Dusk'
     },
     // Civil twilight
     {
       start: sunTimes.civilTwilightEnd,
       end: sunTimes.sunrise,
-      color: '#f59e0b', // amber-500
+      color: '#f59e0b',
       label: 'Civil Dawn'
     },
     {
       start: sunTimes.sunset,
       end: sunTimes.civilTwilightStart,
-      color: '#dc2626', // red-600
+      color: '#dc2626',
       label: 'Civil Dusk'
     },
     // Morning prime window
     {
       start: sunTimes.morningPrimeStart,
       end: sunTimes.morningPrimeEnd,
-      color: '#fbbf24', // amber-400
+      color: '#fbbf24',
       label: 'Morning Prime',
       isPrime: true
     },
@@ -163,14 +200,14 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     {
       start: sunTimes.morningPrimeEnd,
       end: sunTimes.eveningPrimeStart,
-      color: '#60a5fa', // blue-400
+      color: '#60a5fa',
       label: 'Daylight'
     },
     // Evening prime window
     {
       start: sunTimes.eveningPrimeStart,
       end: sunTimes.eveningPrimeEnd,
-      color: '#f97316', // orange-500
+      color: '#f97316',
       label: 'Evening Prime',
       isPrime: true
     }
@@ -205,21 +242,25 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
             {/* Background circle */}
             <div className="absolute inset-0 rounded-full bg-black/30 backdrop-blur-sm border border-white/20"></div>
             
-            {/* Clock segments */}
+            {/* Clock segments - now full pie slices */}
             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
               <defs>
-                {timeSegments.map((segment, index) => (
-                  <linearGradient key={`gradient-${index}`} id={`gradient-${index}`} gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor={segment.color} />
-                    <stop offset="100%" stopColor={segment.color} />
-                  </linearGradient>
-                ))}
+                <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.8" />
+                  <stop offset="70%" stopColor="#f59e0b" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#e5e7eb" stopOpacity="0.6" />
+                  <stop offset="70%" stopColor="#9ca3af" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#9ca3af" stopOpacity="0" />
+                </radialGradient>
               </defs>
               
               {timeSegments.map((segment, index) => (
                 <path
                   key={index}
-                  d={createArcPath(segment.start, segment.end, 120, 140)}
+                  d={createPieSlice(segment.start, segment.end)}
                   fill={segment.color}
                   opacity={segment.isPrime ? 0.9 : 0.7}
                   className={segment.isPrime ? 'animate-pulse' : ''}
@@ -229,7 +270,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
 
             {/* Hour markers */}
             {hourMarkers.map((marker, index) => {
-              const radius = marker.isMainHour ? 135 : 130;
+              const radius = 135;
               const x = 160 + Math.cos((marker.angle * Math.PI) / 180) * radius;
               const y = 160 + Math.sin((marker.angle * Math.PI) / 180) * radius;
               
@@ -250,21 +291,46 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               );
             })}
 
-            {/* Current time sun indicator */}
+            {/* Current time sun indicator - moved closer to center */}
             <div
-              className="absolute w-8 h-8 -ml-4 -mt-4 transition-all duration-1000"
+              className="absolute w-6 h-6 -ml-3 -mt-3 transition-all duration-1000"
               style={{
-                left: 160 + Math.cos((sunAngle * Math.PI) / 180) * 125,
-                top: 160 + Math.sin((sunAngle * Math.PI) / 180) * 125,
+                left: 160 + Math.cos((sunAngle * Math.PI) / 180) * 100,
+                top: 160 + Math.sin((sunAngle * Math.PI) / 180) * 100,
               }}
             >
               <div className="relative">
-                {/* Sun glow */}
-                <div className="absolute inset-0 w-12 h-12 -ml-2 -mt-2 bg-yellow-400 rounded-full blur-md opacity-60 animate-pulse"></div>
-                {/* Sun icon */}
-                <Sun className="w-8 h-8 text-yellow-300 drop-shadow-lg relative z-10" />
+                {/* Enhanced sun glow */}
+                <div className="absolute inset-0 w-16 h-16 -ml-5 -mt-5 rounded-full" style={{
+                  background: 'radial-gradient(circle, rgba(251, 191, 36, 0.8) 0%, rgba(245, 158, 11, 0.4) 40%, rgba(245, 158, 11, 0) 70%)',
+                  filter: 'blur(4px)',
+                  animation: 'pulse 2s infinite'
+                }}></div>
+                {/* Realistic sun */}
+                <div className="relative z-10 w-6 h-6 rounded-full bg-gradient-to-br from-yellow-200 via-yellow-400 to-orange-500 shadow-lg border border-yellow-300/50"></div>
               </div>
             </div>
+
+            {/* Moon indicator */}
+            {moonData.visible && (
+              <div
+                className="absolute w-4 h-4 -ml-2 -mt-2 transition-all duration-1000"
+                style={{
+                  left: 160 + Math.cos((moonAngle * Math.PI) / 180) * 100,
+                  top: 160 + Math.sin((moonAngle * Math.PI) / 180) * 100,
+                }}
+              >
+                <div className="relative">
+                  {/* Moon glow */}
+                  <div className="absolute inset-0 w-8 h-8 -ml-2 -mt-2 rounded-full" style={{
+                    background: 'radial-gradient(circle, rgba(229, 231, 235, 0.6) 0%, rgba(156, 163, 175, 0.3) 40%, rgba(156, 163, 175, 0) 70%)',
+                    filter: 'blur(2px)'
+                  }}></div>
+                  {/* Realistic moon */}
+                  <div className="relative z-10 w-4 h-4 rounded-full bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 shadow-md border border-gray-200/50"></div>
+                </div>
+              </div>
+            )}
 
             {/* Center dot */}
             <div className="absolute top-1/2 left-1/2 w-2 h-2 -ml-1 -mt-1 bg-white rounded-full shadow-lg"></div>
@@ -287,20 +353,27 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
           )}
         </div>
 
-        {/* Legend */}
-        <div className="mt-8 grid grid-cols-2 gap-4 text-sm">
-          <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-            <div className="text-white/90 mb-2">Morning Prime</div>
-            <div className="text-yellow-200 font-mono">
-              {Math.floor(sunTimes.morningPrimeStart)}:{String(Math.floor((sunTimes.morningPrimeStart % 1) * 60)).padStart(2, '0')} - {Math.floor(sunTimes.morningPrimeEnd)}:{String(Math.floor((sunTimes.morningPrimeEnd % 1) * 60)).padStart(2, '0')}
+        {/* Tide Information (replaces prime time blocks) */}
+        <div className="mt-8">
+          <button 
+            onClick={() => setShowTides(!showTides)}
+            className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 flex items-center gap-2 mx-auto"
+          >
+            <Waves className="w-4 h-4" />
+            Tides {showTides ? '▼' : '▶'}
+          </button>
+          
+          {showTides && (
+            <div className="mt-4 bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 animate-fade-in">
+              <div className="text-white/90 mb-2">Current Tide</div>
+              <div className="text-blue-200 font-mono text-lg mb-2">
+                {tideData.isHigh ? 'High' : 'Low'} - {tideData.height}
+              </div>
+              <div className="text-white/70 text-sm">
+                Next {tideData.isHigh ? 'low' : 'high'} in {tideData.nextChange.toFixed(1)}h
+              </div>
             </div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-            <div className="text-white/90 mb-2">Evening Prime</div>
-            <div className="text-orange-200 font-mono">
-              {Math.floor(sunTimes.eveningPrimeStart)}:{String(Math.floor((sunTimes.eveningPrimeStart % 1) * 60)).padStart(2, '0')} - {Math.floor(sunTimes.eveningPrimeEnd)}:{String(Math.floor((sunTimes.eveningPrimeEnd % 1) * 60)).padStart(2, '0')}
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Action Button */}
