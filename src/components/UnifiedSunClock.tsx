@@ -349,12 +349,17 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     }
   ];
 
-  // Hour markers
-  const hourMarkers = Array.from({ length: 24 }, (_, i) => {
-    const angle = hoursToAngle(i) - 90;
-    const isMainHour = i % 6 === 0;
-    return { hour: i, angle, isMainHour };
-  });
+  // Updated 12-hour clock markers
+  const hourMarkers = [
+    { hour: 12, display: '12a', angle: hoursToAngle(0) - 90, isMainHour: true },
+    { hour: 3, display: '3', angle: hoursToAngle(3) - 90, isMainHour: false },
+    { hour: 6, display: '6a', angle: hoursToAngle(6) - 90, isMainHour: true },
+    { hour: 9, display: '9', angle: hoursToAngle(9) - 90, isMainHour: false },
+    { hour: 12, display: '12p', angle: hoursToAngle(12) - 90, isMainHour: true },
+    { hour: 15, display: '3', angle: hoursToAngle(15) - 90, isMainHour: false },
+    { hour: 18, display: '6p', angle: hoursToAngle(18) - 90, isMainHour: true },
+    { hour: 21, display: '9', angle: hoursToAngle(21) - 90, isMainHour: false }
+  ];
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${theme.background} p-4 flex items-center justify-center relative overflow-hidden`}>
@@ -462,7 +467,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               })}
             </svg>
 
-            {/* Hour markers */}
+            {/* Updated hour markers with 12-hour format and thinner styling */}
             {hourMarkers.map((marker, index) => {
               const radius = 135;
               const x = 160 + Math.cos((marker.angle * Math.PI) / 180) * radius;
@@ -471,21 +476,22 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               return (
                 <div
                   key={index}
-                  className="absolute text-white text-xs font-medium"
+                  className="absolute text-white font-light"
                   style={{
-                    left: x - 8,
-                    top: y - 8,
-                    fontSize: marker.isMainHour ? '14px' : '10px',
-                    opacity: marker.isMainHour ? 1 : 0.7,
+                    left: x - 12,
+                    top: y - 10,
+                    fontSize: marker.isMainHour ? '12px' : '10px',
+                    opacity: marker.isMainHour ? 0.8 : 0.5,
+                    fontWeight: '300',
                     textShadow: '0 0 4px rgba(0,0,0,0.8)'
                   }}
                 >
-                  {marker.hour}
+                  {marker.display}
                 </div>
               );
             })}
 
-            {/* Current time sun indicator with dynamic colors */}
+            {/* Enhanced sun indicator with restored glow */}
             <div
               className="absolute -ml-3 -mt-3 transition-all duration-1000"
               style={{
@@ -496,20 +502,22 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               }}
             >
               <div className="relative">
-                {/* Dynamic sun glow */}
+                {/* Enhanced sun glow that blends with theme */}
                 <div 
                   className="absolute inset-0 rounded-full"
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    marginLeft: '-8px',
-                    marginTop: '-8px',
-                    background: `radial-gradient(circle, ${sunColors.from}80 0%, ${sunColors.via}40 40%, ${sunColors.to}00 70%)`,
-                    filter: 'blur(6px)',
+                    width: '48px',
+                    height: '48px',
+                    marginLeft: '-12px',
+                    marginTop: '-12px',
+                    background: afterSunset 
+                      ? `radial-gradient(circle, ${theme.deepNight}60 0%, ${theme.astronomicalTwilight}30 40%, transparent 70%)`
+                      : `radial-gradient(circle, ${sunColors.from}80 0%, ${sunColors.via}50 30%, ${sunColors.to}20 60%, transparent 80%)`,
+                    filter: 'blur(8px)',
                     animation: afterSunset ? 'none' : 'pulse 3s infinite'
                   }}
                 ></div>
-                {/* Dynamic sun */}
+                {/* Sun core */}
                 <div 
                   className="relative z-10 w-6 h-6 rounded-full shadow-lg border border-yellow-300/50"
                   style={{
@@ -534,7 +542,6 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                 }}
               >
                 <div className="relative">
-                  {/* Enhanced moon glow */}
                   <div 
                     className="absolute inset-0 rounded-full"
                     style={{
@@ -546,7 +553,6 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                       filter: 'blur(3px)'
                     }}
                   ></div>
-                  {/* Enhanced moon */}
                   <div 
                     className={`relative z-10 rounded-full shadow-md border border-gray-200/50 ${afterSunset ? 'animate-[pulse_6s_ease-in-out_infinite]' : ''}`}
                     style={{
