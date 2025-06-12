@@ -1,14 +1,83 @@
-
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Waves } from 'lucide-react';
+import { Sun, Moon, Waves, Palette } from 'lucide-react';
 
 interface UnifiedSunClockProps {
   currentTime?: Date;
 }
 
+// Color themes for different moods
+const colorThemes = {
+  default: {
+    name: 'Natural',
+    deepNight: '#0f172a',
+    astronomicalTwilight: '#312e81',
+    nauticalTwilight: '#1e40af',
+    civilTwilight: '#f59e0b',
+    civilDusk: '#dc2626',
+    morningPrime: '#fbbf24',
+    daylight: '#60a5fa',
+    eveningPrime: '#f97316',
+    background: 'from-slate-900 via-indigo-900 to-purple-900'
+  },
+  purple: {
+    name: 'Cosmic Purple',
+    deepNight: '#1e1b4b',
+    astronomicalTwilight: '#4c1d95',
+    nauticalTwilight: '#6b21a8',
+    civilTwilight: '#a855f7',
+    civilDusk: '#9333ea',
+    morningPrime: '#c084fc',
+    daylight: '#3b82f6',
+    eveningPrime: '#8b5cf6',
+    background: 'from-purple-900 via-violet-900 to-indigo-900'
+  },
+  ocean: {
+    name: 'Ocean Blue',
+    deepNight: '#0c4a6e',
+    astronomicalTwilight: '#075985',
+    nauticalTwilight: '#0369a1',
+    civilTwilight: '#0284c7',
+    civilDusk: '#0ea5e9',
+    morningPrime: '#38bdf8',
+    daylight: '#60a5fa',
+    eveningPrime: '#06b6d4',
+    background: 'from-blue-900 via-cyan-900 to-teal-900'
+  },
+  monochrome: {
+    name: 'Midnight',
+    deepNight: '#000000',
+    astronomicalTwilight: '#1f2937',
+    nauticalTwilight: '#374151',
+    civilTwilight: '#4b5563',
+    civilDusk: '#6b7280',
+    morningPrime: '#9ca3af',
+    daylight: '#d1d5db',
+    eveningPrime: '#9ca3af',
+    background: 'from-gray-900 via-black to-gray-900'
+  }
+};
+
+// Visible stars data (simplified constellation points for northern view)
+const starData = [
+  { name: 'Polaris', magnitude: 2.0, ra: 37.95, dec: 89.26, constellation: 'Ursa Minor' },
+  { name: 'Dubhe', magnitude: 1.8, ra: 165.93, dec: 61.75, constellation: 'Ursa Major' },
+  { name: 'Merak', magnitude: 2.3, ra: 178.46, dec: 56.38, constellation: 'Ursa Major' },
+  { name: 'Vega', magnitude: 0.0, ra: 279.23, dec: 38.78, constellation: 'Lyra' },
+  { name: 'Altair', magnitude: 0.8, ra: 297.70, dec: 8.87, constellation: 'Aquila' },
+  { name: 'Deneb', magnitude: 1.3, ra: 310.36, dec: 45.28, constellation: 'Cygnus' },
+  { name: 'Capella', magnitude: 0.1, ra: 79.17, dec: 45.99, constellation: 'Auriga' },
+  { name: 'Arcturus', magnitude: -0.05, ra: 213.92, dec: 19.18, constellation: 'Boötes' },
+  { name: 'Spica', magnitude: 1.0, ra: 201.30, dec: -11.16, constellation: 'Virgo' },
+  { name: 'Regulus', magnitude: 1.4, ra: 152.09, dec: 11.97, constellation: 'Leo' }
+];
+
 const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Date() }) => {
   const [time, setTime] = useState(currentTime);
   const [showTides, setShowTides] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('default');
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
+
+  const theme = colorThemes[currentTheme as keyof typeof colorThemes];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -93,6 +162,19 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     };
   };
 
+  // Convert star coordinates to clock position (simplified)
+  const getStarPosition = (ra: number, dec: number, currentHour: number) => {
+    // Simplified star positioning - in reality would need more complex calculations
+    const hourAngle = ((ra / 15 - currentHour + 12) % 24) * 15; // Convert RA to hour angle
+    const distance = Math.max(20, 100 - (dec / 90) * 80); // Distance from center based on declination
+    
+    const angle = (hourAngle - 90) * (Math.PI / 180);
+    const x = 160 + Math.cos(angle) * distance;
+    const y = 160 + Math.sin(angle) * distance;
+    
+    return { x, y, visible: dec > 0 }; // Only show northern stars
+  };
+
   // Calculate current time values
   const hours = time.getHours();
   const minutes = time.getMinutes();
@@ -111,6 +193,9 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const inMorningPrime = currentHour >= sunTimes.morningPrimeStart && currentHour <= sunTimes.morningPrimeEnd;
   const inEveningPrime = currentHour >= sunTimes.eveningPrimeStart && currentHour <= sunTimes.eveningPrimeEnd;
   const inPrimeWindow = inMorningPrime || inEveningPrime;
+
+  // Check if it's deep night for star visibility
+  const inDeepNight = currentHour < sunTimes.astronomicalNightEnd || currentHour > sunTimes.astronomicalNightStart;
 
   // Create SVG path for pie slice segments (extending to center)
   const createPieSlice = (startHour: number, endHour: number) => {
@@ -134,65 +219,65 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     return `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
   };
 
-  // Generate time segments with colors (full pie slices)
+  // Generate time segments with themed colors (full pie slices)
   const timeSegments = [
     // Deep night (astronomical night to astronomical dawn)
     {
       start: 0,
       end: sunTimes.astronomicalNightEnd,
-      color: '#0f172a',
+      color: theme.deepNight,
       label: 'Deep Night'
     },
     {
       start: sunTimes.astronomicalNightStart,
       end: 24,
-      color: '#0f172a',
+      color: theme.deepNight,
       label: 'Deep Night'
     },
     // Astronomical twilight
     {
       start: sunTimes.astronomicalNightEnd,
       end: sunTimes.nauticalTwilightEnd,
-      color: '#312e81',
+      color: theme.astronomicalTwilight,
       label: 'Astronomical Dawn'
     },
     {
       start: sunTimes.nauticalTwilightStart,
       end: sunTimes.astronomicalNightStart,
-      color: '#312e81',
+      color: theme.astronomicalTwilight,
       label: 'Astronomical Dusk'
     },
     // Nautical twilight
     {
       start: sunTimes.nauticalTwilightEnd,
       end: sunTimes.civilTwilightEnd,
-      color: '#1e40af',
+      color: theme.nauticalTwilight,
       label: 'Nautical Dawn'
     },
     {
       start: sunTimes.civilTwilightStart,
       end: sunTimes.nauticalTwilightStart,
-      color: '#1e40af',
+      color: theme.nauticalTwilight,
       label: 'Nautical Dusk'
     },
     // Civil twilight
     {
       start: sunTimes.civilTwilightEnd,
       end: sunTimes.sunrise,
-      color: '#f59e0b',
+      color: theme.civilTwilight,
       label: 'Civil Dawn'
     },
     {
       start: sunTimes.sunset,
       end: sunTimes.civilTwilightStart,
-      color: '#dc2626',
+      color: theme.civilDusk,
       label: 'Civil Dusk'
     },
     // Morning prime window
     {
       start: sunTimes.morningPrimeStart,
       end: sunTimes.morningPrimeEnd,
-      color: '#fbbf24',
+      color: theme.morningPrime,
       label: 'Morning Prime',
       isPrime: true
     },
@@ -200,14 +285,14 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     {
       start: sunTimes.morningPrimeEnd,
       end: sunTimes.eveningPrimeStart,
-      color: '#60a5fa',
+      color: theme.daylight,
       label: 'Daylight'
     },
     // Evening prime window
     {
       start: sunTimes.eveningPrimeStart,
       end: sunTimes.eveningPrimeEnd,
-      color: '#f97316',
+      color: theme.eveningPrime,
       label: 'Evening Prime',
       isPrime: true
     }
@@ -221,7 +306,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 p-4 flex items-center justify-center relative overflow-hidden">
+    <div className={`min-h-screen bg-gradient-to-br ${theme.background} p-4 flex items-center justify-center relative overflow-hidden`}>
       {/* Atmospheric background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-radial from-blue-400/20 to-transparent rounded-full blur-3xl animate-pulse"></div>
@@ -233,6 +318,40 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white drop-shadow-2xl mb-2 tracking-wide">SolCue</h1>
           <p className="text-lg text-white/90 drop-shadow-lg">Circadian Light Tracker</p>
+        </div>
+
+        {/* Theme Selector */}
+        <div className="mb-6">
+          <button 
+            onClick={() => setShowThemeSelector(!showThemeSelector)}
+            className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 flex items-center gap-2 mx-auto"
+          >
+            <Palette className="w-4 h-4" />
+            {theme.name} Theme {showThemeSelector ? '▼' : '▶'}
+          </button>
+          
+          {showThemeSelector && (
+            <div className="mt-4 bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 animate-fade-in">
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(colorThemes).map(([key, themeOption]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setCurrentTheme(key);
+                      setShowThemeSelector(false);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm transition-all duration-300 ${
+                      currentTheme === key 
+                        ? 'bg-white/30 text-white' 
+                        : 'bg-white/10 text-white/80 hover:bg-white/20'
+                    }`}
+                  >
+                    {themeOption.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Main Clock Container */}
@@ -266,6 +385,30 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                   className={segment.isPrime ? 'animate-pulse' : ''}
                 />
               ))}
+
+              {/* Stars in deep night sections */}
+              {inDeepNight && starData.map((star, index) => {
+                const position = getStarPosition(star.ra, star.dec, currentHour);
+                if (!position.visible) return null;
+                
+                const size = Math.max(1, 4 - star.magnitude); // Brighter stars are larger
+                const opacity = Math.max(0.3, 1 - star.magnitude * 0.2);
+                
+                return (
+                  <circle
+                    key={index}
+                    cx={position.x}
+                    cy={position.y}
+                    r={size}
+                    fill="white"
+                    opacity={opacity}
+                    className="animate-pulse"
+                    style={{ animationDelay: `${index * 200}ms` }}
+                  >
+                    <title>{star.name} - {star.constellation}</title>
+                  </circle>
+                );
+              })}
             </svg>
 
             {/* Hour markers */}
@@ -353,7 +496,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
           )}
         </div>
 
-        {/* Tide Information (replaces prime time blocks) */}
+        {/* Tide Information */}
         <div className="mt-8">
           <button 
             onClick={() => setShowTides(!showTides)}
