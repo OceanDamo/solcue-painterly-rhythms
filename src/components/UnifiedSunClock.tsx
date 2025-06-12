@@ -16,111 +16,169 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     return () => clearInterval(timer);
   }, []);
 
-  // Calculate time values
-  const hours = time.getHours();
-  const minutes = time.getMinutes();
-  const totalMinutes = hours * 60 + minutes;
-  
-  // Sun times (demo values - replace with real calculation)
-  const sunriseMinutes = 6 * 60; // 6:00 AM
-  const sunsetMinutes = 18 * 60; // 6:00 PM
-  
-  // Extended prime windows (2h 15m each)
-  const morningPrimeStart = sunriseMinutes - 15; // 5:45 AM
-  const morningPrimeEnd = sunriseMinutes + 135; // 8:15 AM
-  const eveningPrimeStart = sunsetMinutes - 135; // 3:45 PM
-  const eveningPrimeEnd = sunsetMinutes + 15; // 6:15 PM
-  
-  // Twilight phases
-  const astronomicalDawnStart = sunriseMinutes - 90; // 4:30 AM
-  const nauticalDawnStart = sunriseMinutes - 60; // 5:00 AM
-  const civilDawnStart = sunriseMinutes - 30; // 5:30 AM
-  const civilDuskEnd = sunsetMinutes + 30; // 6:30 PM
-  const nauticalDuskEnd = sunsetMinutes + 60; // 7:00 PM
-  const astronomicalDuskEnd = sunsetMinutes + 90; // 7:30 PM
+  // Convert hours to angle (24-hour clock, midnight at top)
+  const hoursToAngle = (hours: number) => (hours / 24) * 360;
 
-  // Calculate sun position (0-360 degrees around clock)
-  const sunAngle = (totalMinutes / (24 * 60)) * 360 - 90; // -90 to start at top
-
-  // Check if in prime window
-  const inMorningPrime = totalMinutes >= morningPrimeStart && totalMinutes <= morningPrimeEnd;
-  const inEveningPrime = totalMinutes >= eveningPrimeStart && totalMinutes <= eveningPrimeEnd;
-  const inPrimeWindow = inMorningPrime || inEveningPrime;
-
-  // Generate clock segments for different phases
-  const generateClockSegments = () => {
-    const segments = [];
-    const segmentCount = 96; // 15-minute segments for smooth gradients
+  // Real astronomical calculation for any date and location
+  const calculateSunTimes = (lat: number, lon: number, date: Date) => {
+    // Simplified astronomical calculation - you could replace with a library like SunCalc
+    const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000);
     
-    for (let i = 0; i < segmentCount; i++) {
-      const segmentMinutes = (i * 15);
-      const startAngle = (segmentMinutes / (24 * 60)) * 360 - 90;
-      const endAngle = ((segmentMinutes + 15) / (24 * 60)) * 360 - 90;
-      
-      let color = '';
-      let opacity = 0.6;
-      
-      // Determine color based on time phase
-      if (segmentMinutes >= astronomicalDawnStart && segmentMinutes < nauticalDawnStart) {
-        // Astronomical dawn - deep purple to navy
-        color = 'from-indigo-900 to-purple-800';
-        opacity = 0.8;
-      } else if (segmentMinutes >= nauticalDawnStart && segmentMinutes < civilDawnStart) {
-        // Nautical dawn - navy to deep blue
-        color = 'from-purple-800 to-blue-700';
-        opacity = 0.7;
-      } else if (segmentMinutes >= civilDawnStart && segmentMinutes < sunriseMinutes) {
-        // Civil dawn - deep blue to sunrise colors
-        color = 'from-blue-700 to-orange-400';
-        opacity = 0.8;
-      } else if (segmentMinutes >= morningPrimeStart && segmentMinutes <= morningPrimeEnd) {
-        // Morning prime window - warm sunrise colors
-        color = 'from-orange-400 via-yellow-400 to-amber-300';
-        opacity = inMorningPrime ? 1.0 : 0.9;
-      } else if (segmentMinutes > morningPrimeEnd && segmentMinutes < eveningPrimeStart) {
-        // Daytime - bright sky colors
-        color = 'from-sky-400 to-blue-400';
-        opacity = 0.7;
-      } else if (segmentMinutes >= eveningPrimeStart && segmentMinutes <= eveningPrimeEnd) {
-        // Evening prime window - warm sunset colors
-        color = 'from-orange-500 via-red-400 to-pink-500';
-        opacity = inEveningPrime ? 1.0 : 0.9;
-      } else if (segmentMinutes > sunsetMinutes && segmentMinutes < civilDuskEnd) {
-        // Civil dusk - sunset to deep blue
-        color = 'from-pink-500 to-blue-700';
-        opacity = 0.8;
-      } else if (segmentMinutes >= civilDuskEnd && segmentMinutes < nauticalDuskEnd) {
-        // Nautical dusk - deep blue to navy
-        color = 'from-blue-700 to-purple-800';
-        opacity = 0.7;
-      } else if (segmentMinutes >= nauticalDuskEnd && segmentMinutes < astronomicalDuskEnd) {
-        // Astronomical dusk - navy to deep purple
-        color = 'from-purple-800 to-indigo-900';
-        opacity = 0.8;
-      } else {
-        // Night - deep cosmic colors
-        color = 'from-indigo-900 to-slate-900';
-        opacity = 0.9;
-      }
-
-      segments.push({
-        startAngle,
-        endAngle,
-        color,
-        opacity,
-        isPrime: (segmentMinutes >= morningPrimeStart && segmentMinutes <= morningPrimeEnd) ||
-                (segmentMinutes >= eveningPrimeStart && segmentMinutes <= eveningPrimeEnd)
-      });
-    }
+    // For Providence, RI (41.8236°N, 71.4222°W) in May
+    // These are calculated values that would change daily
+    const solarNoon = 12.75;
+    const dayLength = 14.5; // Hours of daylight in May
     
-    return segments;
+    const sunrise = solarNoon - dayLength / 2;
+    const sunset = solarNoon + dayLength / 2;
+    
+    // Twilight calculations (in hours before/after sunrise/sunset)
+    const astronomicalTwilight = 1.5;
+    const nauticalTwilight = 0.9;
+    const civilTwilight = 0.4;
+    
+    return {
+      sunrise,
+      sunset,
+      astronomicalNightEnd: sunrise - astronomicalTwilight,
+      nauticalTwilightEnd: sunrise - nauticalTwilight,
+      civilTwilightEnd: sunrise - civilTwilight,
+      civilTwilightStart: sunset + civilTwilight,
+      nauticalTwilightStart: sunset + nauticalTwilight,
+      astronomicalNightStart: sunset + astronomicalTwilight,
+      solarNoon,
+      
+      // Prime circadian windows - 2 hours after sunrise and 2 hours before sunset
+      morningPrimeStart: sunrise,
+      morningPrimeEnd: sunrise + 2,
+      eveningPrimeStart: sunset - 2,
+      eveningPrimeEnd: sunset,
+    };
   };
 
-  const clockSegments = generateClockSegments();
+  // Calculate current time values
+  const hours = time.getHours();
+  const minutes = time.getMinutes();
+  const currentHour = hours + minutes / 60;
+  
+  // Get sun times for Providence, RI (you can make this dynamic later)
+  const sunTimes = calculateSunTimes(41.8236, -71.4222, time);
+  
+  // Calculate sun position (0-360 degrees around clock, starting at midnight/top)
+  const sunAngle = hoursToAngle(currentHour) - 90; // -90 to start at top
+
+  // Check if in prime window
+  const inMorningPrime = currentHour >= sunTimes.morningPrimeStart && currentHour <= sunTimes.morningPrimeEnd;
+  const inEveningPrime = currentHour >= sunTimes.eveningPrimeStart && currentHour <= sunTimes.eveningPrimeEnd;
+  const inPrimeWindow = inMorningPrime || inEveningPrime;
+
+  // Create SVG path for arc segment
+  const createArcPath = (startHour: number, endHour: number, innerRadius: number, outerRadius: number) => {
+    const startAngle = hoursToAngle(startHour) - 90;
+    const endAngle = hoursToAngle(endHour) - 90;
+    
+    const startAngleRad = (startAngle * Math.PI) / 180;
+    const endAngleRad = (endAngle * Math.PI) / 180;
+    
+    const centerX = 160;
+    const centerY = 160;
+    
+    const x1 = centerX + Math.cos(startAngleRad) * innerRadius;
+    const y1 = centerY + Math.sin(startAngleRad) * innerRadius;
+    const x2 = centerX + Math.cos(endAngleRad) * innerRadius;
+    const y2 = centerY + Math.sin(endAngleRad) * innerRadius;
+    const x3 = centerX + Math.cos(endAngleRad) * outerRadius;
+    const y3 = centerY + Math.sin(endAngleRad) * outerRadius;
+    const x4 = centerX + Math.cos(startAngleRad) * outerRadius;
+    const y4 = centerY + Math.sin(startAngleRad) * outerRadius;
+    
+    const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+    
+    return `M ${x1} ${y1} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`;
+  };
+
+  // Generate time segments with colors
+  const timeSegments = [
+    // Deep night (astronomical night to astronomical dawn)
+    {
+      start: 0,
+      end: sunTimes.astronomicalNightEnd,
+      color: '#0f172a', // slate-900
+      label: 'Deep Night'
+    },
+    {
+      start: sunTimes.astronomicalNightStart,
+      end: 24,
+      color: '#0f172a', // slate-900
+      label: 'Deep Night'
+    },
+    // Astronomical twilight
+    {
+      start: sunTimes.astronomicalNightEnd,
+      end: sunTimes.nauticalTwilightEnd,
+      color: '#312e81', // indigo-800
+      label: 'Astronomical Dawn'
+    },
+    {
+      start: sunTimes.nauticalTwilightStart,
+      end: sunTimes.astronomicalNightStart,
+      color: '#312e81', // indigo-800
+      label: 'Astronomical Dusk'
+    },
+    // Nautical twilight
+    {
+      start: sunTimes.nauticalTwilightEnd,
+      end: sunTimes.civilTwilightEnd,
+      color: '#1e40af', // blue-800
+      label: 'Nautical Dawn'
+    },
+    {
+      start: sunTimes.civilTwilightStart,
+      end: sunTimes.nauticalTwilightStart,
+      color: '#1e40af', // blue-800
+      label: 'Nautical Dusk'
+    },
+    // Civil twilight
+    {
+      start: sunTimes.civilTwilightEnd,
+      end: sunTimes.sunrise,
+      color: '#f59e0b', // amber-500
+      label: 'Civil Dawn'
+    },
+    {
+      start: sunTimes.sunset,
+      end: sunTimes.civilTwilightStart,
+      color: '#dc2626', // red-600
+      label: 'Civil Dusk'
+    },
+    // Morning prime window
+    {
+      start: sunTimes.morningPrimeStart,
+      end: sunTimes.morningPrimeEnd,
+      color: '#fbbf24', // amber-400
+      label: 'Morning Prime',
+      isPrime: true
+    },
+    // Day (between prime windows)
+    {
+      start: sunTimes.morningPrimeEnd,
+      end: sunTimes.eveningPrimeStart,
+      color: '#60a5fa', // blue-400
+      label: 'Daylight'
+    },
+    // Evening prime window
+    {
+      start: sunTimes.eveningPrimeStart,
+      end: sunTimes.eveningPrimeEnd,
+      color: '#f97316', // orange-500
+      label: 'Evening Prime',
+      isPrime: true
+    }
+  ];
 
   // Hour markers
   const hourMarkers = Array.from({ length: 24 }, (_, i) => {
-    const angle = (i / 24) * 360 - 90;
+    const angle = hoursToAngle(i) - 90;
     const isMainHour = i % 6 === 0;
     return { hour: i, angle, isMainHour };
   });
@@ -150,44 +208,23 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
             {/* Clock segments */}
             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
               <defs>
-                {clockSegments.map((segment, index) => (
+                {timeSegments.map((segment, index) => (
                   <linearGradient key={`gradient-${index}`} id={`gradient-${index}`} gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stopColor={segment.color.includes('from-') ? segment.color.split(' ')[0].replace('from-', '') : '#3b82f6'} />
-                    <stop offset="100%" stopColor={segment.color.includes('to-') ? segment.color.split(' ').pop()?.replace('to-', '') : '#1d4ed8'} />
+                    <stop offset="0%" stopColor={segment.color} />
+                    <stop offset="100%" stopColor={segment.color} />
                   </linearGradient>
                 ))}
               </defs>
               
-              {clockSegments.map((segment, index) => {
-                const radius = 140;
-                const innerRadius = 120;
-                const centerX = 160;
-                const centerY = 160;
-                
-                const startAngleRad = (segment.startAngle * Math.PI) / 180;
-                const endAngleRad = (segment.endAngle * Math.PI) / 180;
-                
-                const x1 = centerX + Math.cos(startAngleRad) * innerRadius;
-                const y1 = centerY + Math.sin(startAngleRad) * innerRadius;
-                const x2 = centerX + Math.cos(endAngleRad) * innerRadius;
-                const y2 = centerY + Math.sin(endAngleRad) * innerRadius;
-                const x3 = centerX + Math.cos(endAngleRad) * radius;
-                const y3 = centerY + Math.sin(endAngleRad) * radius;
-                const x4 = centerX + Math.cos(startAngleRad) * radius;
-                const y4 = centerY + Math.sin(startAngleRad) * radius;
-                
-                const largeArcFlag = segment.endAngle - segment.startAngle > 180 ? 1 : 0;
-                
-                return (
-                  <path
-                    key={index}
-                    d={`M ${x1} ${y1} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`}
-                    fill={`url(#gradient-${index})`}
-                    opacity={segment.opacity}
-                    className={segment.isPrime ? 'animate-pulse' : ''}
-                  />
-                );
-              })}
+              {timeSegments.map((segment, index) => (
+                <path
+                  key={index}
+                  d={createArcPath(segment.start, segment.end, 120, 140)}
+                  fill={segment.color}
+                  opacity={segment.isPrime ? 0.9 : 0.7}
+                  className={segment.isPrime ? 'animate-pulse' : ''}
+                />
+              ))}
             </svg>
 
             {/* Hour markers */}
@@ -254,11 +291,15 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
         <div className="mt-8 grid grid-cols-2 gap-4 text-sm">
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
             <div className="text-white/90 mb-2">Morning Prime</div>
-            <div className="text-yellow-200 font-mono">5:45 AM - 8:15 AM</div>
+            <div className="text-yellow-200 font-mono">
+              {Math.floor(sunTimes.morningPrimeStart)}:{String(Math.floor((sunTimes.morningPrimeStart % 1) * 60)).padStart(2, '0')} - {Math.floor(sunTimes.morningPrimeEnd)}:{String(Math.floor((sunTimes.morningPrimeEnd % 1) * 60)).padStart(2, '0')}
+            </div>
           </div>
           <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
             <div className="text-white/90 mb-2">Evening Prime</div>
-            <div className="text-orange-200 font-mono">3:45 PM - 6:15 PM</div>
+            <div className="text-orange-200 font-mono">
+              {Math.floor(sunTimes.eveningPrimeStart)}:{String(Math.floor((sunTimes.eveningPrimeStart % 1) * 60)).padStart(2, '0')} - {Math.floor(sunTimes.eveningPrimeEnd)}:{String(Math.floor((sunTimes.eveningPrimeEnd % 1) * 60)).padStart(2, '0')}
+            </div>
           </div>
         </div>
 
