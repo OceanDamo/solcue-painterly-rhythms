@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Waves, Palette } from 'lucide-react';
+import { Sun, Moon, Waves, Palette, Clock } from 'lucide-react';
 
 interface UnifiedSunClockProps {
   currentTime?: Date;
@@ -71,11 +71,15 @@ const starData = [
   { name: 'Regulus', magnitude: 1.4, ra: 152.09, dec: 11.97, constellation: 'Leo' }
 ];
 
+type ClockFormat = '12hr' | '24hr' | 'main' | 'none';
+
 const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Date() }) => {
   const [time, setTime] = useState(currentTime);
   const [showTides, setShowTides] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('default');
   const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const [clockFormat, setClockFormat] = useState<ClockFormat>('main');
+  const [showClockSelector, setShowClockSelector] = useState(false);
 
   const theme = colorThemes[currentTheme as keyof typeof colorThemes];
 
@@ -349,17 +353,43 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     }
   ];
 
-  // Updated 12-hour clock markers
-  const hourMarkers = [
-    { hour: 12, display: '12a', angle: hoursToAngle(0) - 90, isMainHour: true },
-    { hour: 3, display: '3', angle: hoursToAngle(3) - 90, isMainHour: false },
-    { hour: 6, display: '6a', angle: hoursToAngle(6) - 90, isMainHour: true },
-    { hour: 9, display: '9', angle: hoursToAngle(9) - 90, isMainHour: false },
-    { hour: 12, display: '12p', angle: hoursToAngle(12) - 90, isMainHour: true },
-    { hour: 15, display: '3', angle: hoursToAngle(15) - 90, isMainHour: false },
-    { hour: 18, display: '6p', angle: hoursToAngle(18) - 90, isMainHour: true },
-    { hour: 21, display: '9', angle: hoursToAngle(21) - 90, isMainHour: false }
-  ];
+  // Generate hour markers based on selected format
+  const getHourMarkers = () => {
+    switch (clockFormat) {
+      case '12hr':
+        return Array.from({ length: 12 }, (_, i) => {
+          const hour24 = i === 0 ? 12 : i;
+          const hourAM = i;
+          const hourPM = i + 12;
+          return [
+            { hour: hourAM, display: `${hour24}${i < 6 ? 'a' : 'a'}`, angle: hoursToAngle(hourAM) - 90, isMainHour: i % 3 === 0 },
+            { hour: hourPM, display: `${hour24}${i < 6 ? 'p' : 'p'}`, angle: hoursToAngle(hourPM) - 90, isMainHour: i % 3 === 0 }
+          ];
+        }).flat();
+      
+      case '24hr':
+        return Array.from({ length: 24 }, (_, i) => ({
+          hour: i,
+          display: i.toString(),
+          angle: hoursToAngle(i) - 90,
+          isMainHour: i % 6 === 0
+        }));
+      
+      case 'main':
+        return [
+          { hour: 0, display: '12a', angle: hoursToAngle(0) - 90, isMainHour: true },
+          { hour: 6, display: '6a', angle: hoursToAngle(6) - 90, isMainHour: true },
+          { hour: 12, display: '12p', angle: hoursToAngle(12) - 90, isMainHour: true },
+          { hour: 18, display: '6p', angle: hoursToAngle(18) - 90, isMainHour: true }
+        ];
+      
+      case 'none':
+      default:
+        return [];
+    }
+  };
+
+  const hourMarkers = getHourMarkers();
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${theme.background} p-4 flex items-center justify-center relative overflow-hidden`}>
@@ -376,39 +406,94 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
           <p className="text-lg text-white/90 drop-shadow-lg">Circadian Light Tracker</p>
         </div>
 
-        {/* Theme Selector */}
-        <div className="mb-6">
-          <button 
-            onClick={() => setShowThemeSelector(!showThemeSelector)}
-            className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 flex items-center gap-2 mx-auto"
-          >
-            <Palette className="w-4 h-4" />
-            {theme.name} Theme {showThemeSelector ? '▼' : '▶'}
-          </button>
-          
-          {showThemeSelector && (
-            <div className="mt-4 bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 animate-fade-in">
-              <div className="grid grid-cols-2 gap-3">
-                {Object.entries(colorThemes).map(([key, themeOption]) => (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      setCurrentTheme(key);
-                      setShowThemeSelector(false);
-                    }}
-                    className={`px-3 py-2 rounded-lg text-sm transition-all duration-300 ${
-                      currentTheme === key 
-                        ? 'bg-white/30 text-white' 
-                        : 'bg-white/10 text-white/80 hover:bg-white/20'
-                    }`}
-                  >
-                    {themeOption.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* Control Bar */}
+        <div className="mb-6 flex gap-4 justify-center">
+          {/* Theme Selector */}
+          <div>
+            <button 
+              onClick={() => setShowThemeSelector(!showThemeSelector)}
+              className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 flex items-center gap-2"
+            >
+              <Palette className="w-4 h-4" />
+              {theme.name} {showThemeSelector ? '▼' : '▶'}
+            </button>
+          </div>
+
+          {/* Clock Format Selector */}
+          <div>
+            <button 
+              onClick={() => setShowClockSelector(!showClockSelector)}
+              className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 flex items-center gap-2"
+            >
+              <Clock className="w-4 h-4" />
+              {clockFormat === 'main' ? '12a-6a-12p-6p' : clockFormat === '12hr' ? '12 Hour' : clockFormat === '24hr' ? '24 Hour' : 'No Numbers'} {showClockSelector ? '▼' : '▶'}
+            </button>
+          </div>
         </div>
+        
+        {/* Theme Options */}
+        {showThemeSelector && (
+          <div className="mb-6 bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 animate-fade-in">
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(colorThemes).map(([key, themeOption]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setCurrentTheme(key);
+                    setShowThemeSelector(false);
+                  }}
+                  className={`px-3 py-2 rounded-lg text-sm transition-all duration-300 ${
+                    currentTheme === key 
+                      ? 'bg-white/30 text-white' 
+                      : 'bg-white/10 text-white/80 hover:bg-white/20'
+                  }`}
+                >
+                  {themeOption.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Clock Format Options */}
+        {showClockSelector && (
+          <div className="mb-6 bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 animate-fade-in">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { setClockFormat('main'); setShowClockSelector(false); }}
+                className={`px-3 py-2 rounded-lg text-sm transition-all duration-300 ${
+                  clockFormat === 'main' ? 'bg-white/30 text-white' : 'bg-white/10 text-white/80 hover:bg-white/20'
+                }`}
+              >
+                12a-6a-12p-6p
+              </button>
+              <button
+                onClick={() => { setClockFormat('12hr'); setShowClockSelector(false); }}
+                className={`px-3 py-2 rounded-lg text-sm transition-all duration-300 ${
+                  clockFormat === '12hr' ? 'bg-white/30 text-white' : 'bg-white/10 text-white/80 hover:bg-white/20'
+                }`}
+              >
+                12 Hour
+              </button>
+              <button
+                onClick={() => { setClockFormat('24hr'); setShowClockSelector(false); }}
+                className={`px-3 py-2 rounded-lg text-sm transition-all duration-300 ${
+                  clockFormat === '24hr' ? 'bg-white/30 text-white' : 'bg-white/10 text-white/80 hover:bg-white/20'
+                }`}
+              >
+                24 Hour
+              </button>
+              <button
+                onClick={() => { setClockFormat('none'); setShowClockSelector(false); }}
+                className={`px-3 py-2 rounded-lg text-sm transition-all duration-300 ${
+                  clockFormat === 'none' ? 'bg-white/30 text-white' : 'bg-white/10 text-white/80 hover:bg-white/20'
+                }`}
+              >
+                No Numbers
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Main Clock Container */}
         <div className="relative flex justify-center items-center">
@@ -467,8 +552,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               })}
             </svg>
 
-            {/* Updated hour markers with 12-hour format and thinner styling */}
-            {hourMarkers.map((marker, index) => {
+            {/* Hour markers - only show if not 'none' */}
+            {clockFormat !== 'none' && hourMarkers.map((marker, index) => {
               const radius = 135;
               const x = 160 + Math.cos((marker.angle * Math.PI) / 180) * radius;
               const y = 160 + Math.sin((marker.angle * Math.PI) / 180) * radius;
@@ -491,7 +576,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               );
             })}
 
-            {/* Enhanced sun indicator with restored glow */}
+            {/* Enhanced sun indicator with constant glow */}
             <div
               className="absolute -ml-3 -mt-3 transition-all duration-1000"
               style={{
@@ -502,7 +587,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               }}
             >
               <div className="relative">
-                {/* Enhanced sun glow that blends with theme */}
+                {/* Constant sun glow that always blends with theme colors */}
                 <div 
                   className="absolute inset-0 rounded-full"
                   style={{
@@ -510,11 +595,9 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                     height: '48px',
                     marginLeft: '-12px',
                     marginTop: '-12px',
-                    background: afterSunset 
-                      ? `radial-gradient(circle, ${theme.deepNight}60 0%, ${theme.astronomicalTwilight}30 40%, transparent 70%)`
-                      : `radial-gradient(circle, ${sunColors.from}80 0%, ${sunColors.via}50 30%, ${sunColors.to}20 60%, transparent 80%)`,
+                    background: `radial-gradient(circle, ${sunColors.from}90 0%, ${sunColors.via}60 30%, ${sunColors.to}30 50%, ${theme.daylight}20 70%, transparent 85%)`,
                     filter: 'blur(8px)',
-                    animation: afterSunset ? 'none' : 'pulse 3s infinite'
+                    animation: 'pulse 4s infinite ease-in-out'
                   }}
                 ></div>
                 {/* Sun core */}
@@ -522,7 +605,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                   className="relative z-10 w-6 h-6 rounded-full shadow-lg border border-yellow-300/50"
                   style={{
                     background: `linear-gradient(135deg, ${sunColors.from}, ${sunColors.via}, ${sunColors.to})`,
-                    opacity: afterSunset ? 0.3 : 1
+                    opacity: afterSunset ? 0.4 : 1
                   }}
                 ></div>
               </div>
@@ -579,12 +662,6 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
           <div className="text-lg text-white/90">
             {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
           </div>
-          
-          {inPrimeWindow && (
-            <div className="mt-4 px-6 py-2 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-full border border-yellow-400/30">
-              <span className="text-yellow-200 font-medium">Prime Light Window</span>
-            </div>
-          )}
         </div>
 
         {/* Tide Information */}
