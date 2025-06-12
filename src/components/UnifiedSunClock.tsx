@@ -194,8 +194,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const inEveningPrime = currentHour >= sunTimes.eveningPrimeStart && currentHour <= sunTimes.eveningPrimeEnd;
   const inPrimeWindow = inMorningPrime || inEveningPrime;
 
-  // Check if it's deep night for star visibility
-  const inDeepNight = currentHour < sunTimes.astronomicalNightEnd || currentHour > sunTimes.astronomicalNightStart;
+  // Check if it's after sunset for star visibility
+  const afterSunset = currentHour < sunTimes.sunrise || currentHour > sunTimes.sunset;
 
   // Create SVG path for pie slice segments (extending to center)
   const createPieSlice = (startHour: number, endHour: number) => {
@@ -382,12 +382,12 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                   d={createPieSlice(segment.start, segment.end)}
                   fill={segment.color}
                   opacity={segment.isPrime ? 0.9 : 0.7}
-                  className={segment.isPrime ? 'animate-pulse' : ''}
+                  className={segment.isPrime && inPrimeWindow ? 'animate-[pulse_8s_ease-in-out_infinite]' : ''}
                 />
               ))}
 
-              {/* Stars in deep night sections */}
-              {inDeepNight && starData.map((star, index) => {
+              {/* Stars after sunset */}
+              {afterSunset && starData.map((star, index) => {
                 const position = getStarPosition(star.ra, star.dec, currentHour);
                 if (!position.visible) return null;
                 
@@ -402,7 +402,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                     r={size}
                     fill="white"
                     opacity={opacity}
-                    className="animate-pulse"
+                    className="animate-[pulse_4s_ease-in-out_infinite]"
                     style={{ animationDelay: `${index * 200}ms` }}
                   >
                     <title>{star.name} - {star.constellation}</title>
