@@ -1,0 +1,13 @@
+
+platform :ios, '13.0'
+
+require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
+
+target 'App' do
+  capacitor_pods
+  # Add your other dependencies here
+end
+
+post_install do |installer|
+  assertDeploymentTarget(installer)
+end
