@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import SacredTracker from './SacredTracker';
 
 const UnifiedSunClock = () => {
@@ -11,6 +12,7 @@ const UnifiedSunClock = () => {
   const [colorTheme, setColorTheme] = useState('natural');
   const [hourFormat, setHourFormat] = useState('12h');
   const [showSettings, setShowSettings] = useState(false);
+  const [showTracker, setShowTracker] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -47,39 +49,39 @@ const UnifiedSunClock = () => {
     natural: {
       daylight: '#FFD700',
       prime: '#FF8C00',
-      night: '#4A5568',
+      night: '#2C3E50',
       background: 'from-blue-400 via-purple-500 to-pink-500',
-      sunGlow: 'rgba(255, 215, 0, 0.8)'
+      sunGlow: '#FFD700'
     },
     ocean: {
       daylight: '#00CED1',
       prime: '#1E90FF',
       night: '#191970',
       background: 'from-cyan-400 via-blue-500 to-indigo-600',
-      sunGlow: 'rgba(0, 206, 209, 0.8)'
+      sunGlow: '#00CED1'
     },
     forest: {
       daylight: '#32CD32',
       prime: '#228B22',
       night: '#2F4F4F',
       background: 'from-green-400 via-emerald-500 to-teal-600',
-      sunGlow: 'rgba(50, 205, 50, 0.8)'
+      sunGlow: '#32CD32'
     },
     sunset: {
       daylight: '#FF6347',
       prime: '#FF4500',
       night: '#8B0000',
       background: 'from-orange-400 via-red-500 to-purple-600',
-      sunGlow: 'rgba(255, 99, 71, 0.8)'
+      sunGlow: '#FF6347'
     }
   };
 
   const currentTheme = colorThemes[colorTheme];
 
-  // Calculate sun position and segments
+  // Calculate sun position
   const sunAngle = (totalMinutes / (24 * 60)) * 360;
   
-  // Generate 24 segments for each hour
+  // Generate 24 segments extending to center
   const generateSegments = () => {
     const segments = [];
     for (let i = 0; i < 24; i++) {
@@ -97,28 +99,24 @@ const UnifiedSunClock = () => {
         segmentColor = isPrimeTime ? currentTheme.prime : currentTheme.daylight;
       }
       
-      // Calculate path for segment
+      // Calculate path for segment extending to center
       const startAngle = (segmentStart - 90) * (Math.PI / 180);
       const endAngle = (segmentEnd - 90) * (Math.PI / 180);
-      const innerRadius = 80;
       const outerRadius = 120;
       
-      const x1 = 160 + Math.cos(startAngle) * innerRadius;
-      const y1 = 160 + Math.sin(startAngle) * innerRadius;
-      const x2 = 160 + Math.cos(endAngle) * innerRadius;
-      const y2 = 160 + Math.sin(endAngle) * innerRadius;
-      const x3 = 160 + Math.cos(endAngle) * outerRadius;
-      const y3 = 160 + Math.sin(endAngle) * outerRadius;
-      const x4 = 160 + Math.cos(startAngle) * outerRadius;
-      const y4 = 160 + Math.sin(startAngle) * outerRadius;
+      const x1 = 160; // center
+      const y1 = 160; // center
+      const x2 = 160 + Math.cos(endAngle) * outerRadius;
+      const y2 = 160 + Math.sin(endAngle) * outerRadius;
+      const x3 = 160 + Math.cos(startAngle) * outerRadius;
+      const y3 = 160 + Math.sin(startAngle) * outerRadius;
       
       const largeArcFlag = segmentEnd - segmentStart <= 180 ? "0" : "1";
       
       const pathData = [
         `M ${x1} ${y1}`,
-        `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
         `L ${x3} ${y3}`,
-        `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4}`,
+        `A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
         'Z'
       ].join(' ');
       
@@ -127,9 +125,9 @@ const UnifiedSunClock = () => {
           key={i}
           d={pathData}
           fill={segmentColor}
-          opacity={isDaylight ? 0.8 : 0.3}
-          stroke="rgba(255,255,255,0.2)"
-          strokeWidth="1"
+          opacity={isDaylight ? 0.9 : 0.4}
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth="0.5"
         />
       );
     }
@@ -148,53 +146,78 @@ const UnifiedSunClock = () => {
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${currentTheme.background} p-4 transition-all duration-1000 ease-in-out relative overflow-hidden`}>
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="absolute top-4 right-4 z-20 bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-          <div className="space-y-4">
-            <div>
-              <label className="text-white text-sm font-light mb-2 block">Color Theme</label>
-              <Select value={colorTheme} onValueChange={setColorTheme}>
-                <SelectTrigger className="w-32 bg-white/20 border-white/30 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="natural">Natural</SelectItem>
-                  <SelectItem value="ocean">Ocean</SelectItem>
-                  <SelectItem value="forest">Forest</SelectItem>
-                  <SelectItem value="sunset">Sunset</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Top Navigation */}
+      <div className="absolute top-4 left-4 right-4 z-20 flex justify-between items-center">
+        {/* About Tab */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-white/60 hover:text-white/90 text-sm font-light">
+              About
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="bg-black/80 backdrop-blur-md border-white/20">
+            <SheetHeader>
+              <SheetTitle className="text-white font-light text-2xl">SolCue</SheetTitle>
+              <SheetDescription className="text-white/80 font-light">
+                Circadian Light Tracker
+              </SheetDescription>
+            </SheetHeader>
+            <div className="mt-6 space-y-4 text-white/90 font-light">
+              <p>A natural rhythm tracker that helps you align with optimal light exposure times.</p>
+              <p>The colored segments show daylight hours and prime light windows for circadian health.</p>
+              <p>Created to help you reconnect with nature's timing.</p>
             </div>
-            <div>
-              <label className="text-white text-sm font-light mb-2 block">Hour Format</label>
-              <Select value={hourFormat} onValueChange={setHourFormat}>
-                <SelectTrigger className="w-32 bg-white/20 border-white/30 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="12h">12 Hour</SelectItem>
-                  <SelectItem value="24h">24 Hour</SelectItem>
-                </SelectContent>
-              </Select>
+          </SheetContent>
+        </Sheet>
+
+        {/* Settings Panel */}
+        {showSettings && (
+          <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
+            <div className="space-y-4">
+              <div>
+                <label className="text-white text-sm font-light mb-2 block">Color Theme</label>
+                <Select value={colorTheme} onValueChange={setColorTheme}>
+                  <SelectTrigger className="w-32 bg-white/20 border-white/30 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="natural">Natural</SelectItem>
+                    <SelectItem value="ocean">Ocean</SelectItem>
+                    <SelectItem value="forest">Forest</SelectItem>
+                    <SelectItem value="sunset">Sunset</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-white text-sm font-light mb-2 block">Hour Format</label>
+                <Select value={hourFormat} onValueChange={setHourFormat}>
+                  <SelectTrigger className="w-32 bg-white/20 border-white/30 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="12h">12 Hour</SelectItem>
+                    <SelectItem value="24h">24 Hour</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Settings Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setShowSettings(!showSettings)}
-        className="absolute top-4 right-4 z-10 text-white/80 hover:text-white"
-      >
-        <Settings className="w-5 h-5" />
-      </Button>
+        {/* Settings Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowSettings(!showSettings)}
+          className="text-white/60 hover:text-white/90"
+        >
+          <Settings className="w-5 h-5" />
+        </Button>
+      </div>
 
       <div className="relative z-10 max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 mt-16">
           <h1 className="text-6xl font-light text-white drop-shadow-2xl mb-2 tracking-wide" style={{
             textShadow: '0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.3)'
           }}>SolCue</h1>
@@ -210,7 +233,7 @@ const UnifiedSunClock = () => {
                 {/* Clock face background */}
                 <circle cx="160" cy="160" r="140" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
                 
-                {/* Hour segments */}
+                {/* Hour segments extending to center */}
                 {generateSegments()}
                 
                 {/* Hour labels */}
@@ -237,36 +260,16 @@ const UnifiedSunClock = () => {
                 })}
               </svg>
 
-              {/* Glowing Sun Position */}
+              {/* Realistic Sun with Diffuse Glow */}
               <div
-                className="absolute w-8 h-8 rounded-full transform -translate-x-1/2 -translate-y-1/2"
+                className="absolute w-6 h-6 rounded-full transform -translate-x-1/2 -translate-y-1/2"
                 style={{
                   left: `calc(50% + ${Math.cos((sunAngle - 90) * Math.PI / 180) * 100}px)`,
                   top: `calc(50% + ${Math.sin((sunAngle - 90) * Math.PI / 180) * 100}px)`,
-                  background: `radial-gradient(circle, ${currentTheme.sunGlow}, transparent)`,
-                  boxShadow: `0 0 30px ${currentTheme.sunGlow}, 0 0 60px ${currentTheme.sunGlow}`
+                  background: `radial-gradient(circle, ${currentTheme.sunGlow} 0%, ${currentTheme.sunGlow}80 30%, ${currentTheme.sunGlow}40 60%, transparent 100%)`,
+                  boxShadow: `0 0 20px ${currentTheme.sunGlow}, 0 0 40px ${currentTheme.sunGlow}80, 0 0 60px ${currentTheme.sunGlow}40`
                 }}
-              >
-                <Sun className="w-full h-full text-white drop-shadow-lg" />
-              </div>
-
-              {/* Center Time Display */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className="text-center">
-                  <div className="text-4xl font-light text-white drop-shadow-2xl tracking-wider mb-2" style={{
-                    textShadow: '0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.4)'
-                  }}>
-                    {time.toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit',
-                      hour12: hourFormat === '12h'
-                    })}
-                  </div>
-                  <div className="text-sm text-white/90 drop-shadow-lg tracking-wide font-light">
-                    {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
-                  </div>
-                </div>
-              </div>
+              />
 
               {/* Prime Time Glow Effect */}
               {isInPrimeWindow && (
@@ -275,20 +278,42 @@ const UnifiedSunClock = () => {
                 }}></div>
               )}
             </div>
+
+            {/* Time Display Below Clock */}
+            <div className="mt-6 text-center">
+              <div className="text-4xl font-light text-white drop-shadow-2xl tracking-wider mb-2" style={{
+                textShadow: '0 0 20px rgba(255,255,255,0.8), 0 0 40px rgba(255,255,255,0.4)'
+              }}>
+                {time.toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: hourFormat === '12h'
+                })}
+              </div>
+              <div className="text-sm text-white/90 drop-shadow-lg tracking-wide font-light">
+                {time.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })}
+              </div>
+            </div>
           </div>
 
-          {/* Start Light Session Button */}
-          <div className="mt-8">
-            <button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-4 px-12 rounded-full text-lg shadow-2xl transition-all duration-300 transform hover:scale-105">
-              Start Light Session
-            </button>
+          {/* Subtle Tracking Button */}
+          <div className="mt-8 flex flex-col items-center space-y-4">
+            {!showTracker ? (
+              <Button
+                variant="ghost"
+                onClick={() => setShowTracker(true)}
+                className="text-white/50 hover:text-white/80 text-sm font-light tracking-wide px-6 py-2"
+              >
+                Track Light Time
+              </Button>
+            ) : (
+              <SacredTracker 
+                isInPrimeWindow={isInPrimeWindow} 
+                currentPhase={hours >= 6 && hours < 18 ? 'Day' : 'Night'}
+                onClose={() => setShowTracker(false)}
+              />
+            )}
           </div>
-
-          {/* Minimal Tracking Component */}
-          <SacredTracker 
-            isInPrimeWindow={isInPrimeWindow} 
-            currentPhase={hours >= 6 && hours < 18 ? 'Day' : 'Night'}
-          />
         </div>
       </div>
     </div>
