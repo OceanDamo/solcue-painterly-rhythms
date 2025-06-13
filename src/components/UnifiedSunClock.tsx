@@ -1,6 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Waves, Clock } from 'lucide-react';
+import { Sun, Moon, Waves, Clock, Info } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface UnifiedSunClockProps {
   currentTime?: Date;
@@ -155,7 +163,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     };
   };
 
-  // Enhanced sun glow - more diffuse
+  // Enhanced sun glow - more diffuse with maintained sun color at night
   const getSunColor = (currentHour: number, sunTimes: any) => {
     // Sunrise transition: deep orange to golden yellow
     if (currentHour >= sunTimes.sunrise - 0.5 && currentHour <= sunTimes.sunrise + 1) {
@@ -184,11 +192,11 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
       };
     }
     
-    // Nighttime: dim, theme-colored
+    // Nighttime: maintain subtle sun color
     return {
-      from: theme.deepNight,
-      via: theme.astronomicalTwilight,
-      to: theme.nauticalTwilight
+      from: '#ff8a50', // Warm orange (darker but still sun-like)
+      via: '#ff6b35', // Deep orange
+      to: '#d84315'   // Dark orange-red
     };
   };
 
@@ -212,7 +220,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const moonData = calculateMoonPosition(time);
   const tideData = calculateTides();
   
-  // Calculate sun and moon positions (moved off the numbers)
+  // Calculate sun and moon positions
   const sunAngle = hoursToAngle(currentHour) - 90;
   const moonAngle = hoursToAngle(moonData.hour) - 90;
   
@@ -248,6 +256,30 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
     
     return `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+  };
+
+  // Get the current light segment for background
+  const getCurrentLightSegment = () => {
+    if (currentHour >= sunTimes.sunrise && currentHour <= sunTimes.sunset) {
+      // Daytime
+      if (inMorningPrime) return theme.morningPrime;
+      if (inEveningPrime) return theme.eveningPrime;
+      return theme.daylight;
+    } else if (currentHour >= sunTimes.civilTwilightEnd && currentHour <= sunTimes.sunrise) {
+      return theme.civilTwilight;
+    } else if (currentHour >= sunTimes.sunset && currentHour <= sunTimes.civilTwilightStart) {
+      return theme.civilDusk;
+    } else if (currentHour >= sunTimes.nauticalTwilightEnd && currentHour <= sunTimes.civilTwilightEnd) {
+      return theme.nauticalTwilight;
+    } else if (currentHour >= sunTimes.civilTwilightStart && currentHour <= sunTimes.nauticalTwilightStart) {
+      return theme.nauticalTwilight;
+    } else if (currentHour >= sunTimes.astronomicalNightEnd && currentHour <= sunTimes.nauticalTwilightEnd) {
+      return theme.astronomicalTwilight;
+    } else if (currentHour >= sunTimes.nauticalTwilightStart && currentHour <= sunTimes.astronomicalNightStart) {
+      return theme.astronomicalTwilight;
+    } else {
+      return theme.deepNight;
+    }
   };
 
   // Generate time segments with themed colors (full pie slices)
@@ -338,8 +370,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
           const hourAM = i;
           const hourPM = i + 12;
           return [
-            { hour: hourAM, display: `${hour24}${i < 6 ? 'a' : 'a'}`, angle: hoursToAngle(hourAM) - 90, isMainHour: i % 3 === 0 },
-            { hour: hourPM, display: `${hour24}${i < 6 ? 'p' : 'p'}`, angle: hoursToAngle(hourPM) - 90, isMainHour: i % 3 === 0 }
+            { hour: hourAM, display: `${hour24}a`, angle: hoursToAngle(hourAM) - 90, isMainHour: i % 3 === 0 },
+            { hour: hourPM, display: `${hour24}p`, angle: hoursToAngle(hourPM) - 90, isMainHour: i % 3 === 0 }
           ];
         }).flat();
       
@@ -366,15 +398,19 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   };
 
   const hourMarkers = getHourMarkers();
+  const currentLightColor = getCurrentLightSegment();
+
+  // Calculate sun position for background
+  const sunX = 50 + Math.cos((sunAngle * Math.PI) / 180) * 30;
+  const sunY = 50 + Math.sin((sunAngle * Math.PI) / 180) * 30;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${theme.background} p-4 flex flex-col items-center justify-center relative overflow-hidden`}>
-      {/* Atmospheric background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-radial from-blue-400/10 to-transparent rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-radial from-purple-400/10 to-transparent rounded-full blur-2xl animate-pulse delay-1000"></div>
-      </div>
-
+    <div 
+      className="min-h-screen p-4 flex flex-col items-center justify-center relative overflow-hidden"
+      style={{
+        background: `radial-gradient(circle at ${sunX}% ${sunY}%, ${currentLightColor}15 0%, ${currentLightColor}08 25%, ${theme.deepNight}90 50%, ${theme.deepNight} 100%)`
+      }}
+    >
       <div className="relative z-10 max-w-2xl mx-auto text-center flex-1 flex flex-col justify-center">
         {/* Header */}
         <div className="mb-8">
@@ -443,6 +479,33 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               );
             })}
 
+            {/* Hour lines for 'main' format */}
+            {clockFormat === 'main' && Array.from({ length: 24 }, (_, i) => {
+              if ([0, 6, 12, 18].includes(i)) return null; // Skip main hours
+              const angle = hoursToAngle(i) - 90;
+              const innerRadius = 115;
+              const outerRadius = 125;
+              const x1 = 160 + Math.cos((angle * Math.PI) / 180) * innerRadius;
+              const y1 = 160 + Math.sin((angle * Math.PI) / 180) * innerRadius;
+              const x2 = 160 + Math.cos((angle * Math.PI) / 180) * outerRadius;
+              const y2 = 160 + Math.sin((angle * Math.PI) / 180) * outerRadius;
+              
+              return (
+                <div
+                  key={`line-${i}`}
+                  className="absolute bg-white/40"
+                  style={{
+                    left: x1,
+                    top: y1,
+                    width: '1px',
+                    height: Math.sqrt((x2-x1)**2 + (y2-y1)**2),
+                    transformOrigin: '0 0',
+                    transform: `rotate(${angle + 90}deg)`
+                  }}
+                />
+              );
+            })}
+
             {/* Enhanced sun indicator with much more diffuse glow */}
             <div
               className="absolute -ml-3 -mt-3 transition-all duration-1000"
@@ -480,12 +543,12 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                     animation: 'pulse 8s infinite ease-in-out reverse'
                   }}
                 ></div>
-                {/* Sun core */}
+                {/* Sun core - now maintains color even at night */}
                 <div 
                   className="relative z-10 w-6 h-6 rounded-full shadow-lg border border-yellow-300/50"
                   style={{
                     background: `linear-gradient(135deg, ${sunColors.from}, ${sunColors.via}, ${sunColors.to})`,
-                    opacity: afterSunset ? 0.4 : 1
+                    opacity: afterSunset ? 0.7 : 1
                   }}
                 ></div>
               </div>
@@ -546,22 +609,22 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
 
         {/* Minimized Action Button */}
         <div className="mb-6">
-          <button className="px-4 py-1.5 bg-white/10 backdrop-blur-md text-white/80 text-sm rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20">
-            {inPrimeWindow ? 'Start Light Session' : 'Manual Session'}
+          <button className="px-3 py-1 bg-white/10 backdrop-blur-md text-white/80 text-xs rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20">
+            {inPrimeWindow ? 'Start Light Tracking' : 'Start Light Tracking'}
           </button>
         </div>
 
         {/* Simplified Controls */}
         <div className="flex gap-6 justify-center items-center">
-          {/* Simplified Color Selector - Tiny colored circles */}
+          {/* Tiny colored circles for theme selection */}
           <div className="flex gap-2">
             {Object.entries(colorThemes).map(([key, themeOption]) => (
               <button
                 key={key}
                 onClick={() => setCurrentTheme(key)}
-                className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
                   currentTheme === key 
-                    ? 'ring-2 ring-white/60 ring-offset-2 ring-offset-black' 
+                    ? 'ring-1 ring-white/60 ring-offset-1 ring-offset-black scale-125' 
                     : 'hover:scale-110'
                 }`}
                 style={{ backgroundColor: themeOption.representativeColor }}
@@ -570,23 +633,57 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
             ))}
           </div>
 
-          {/* Simplified Time Format Selector */}
+          {/* Just clock icon for time format */}
           <button 
-            onClick={() => setClockFormat(clockFormat === '12hr' ? '24hr' : '12hr')}
-            className="flex items-center gap-1 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-sm"
+            onClick={() => {
+              const formats: ClockFormat[] = ['12hr', '24hr', 'main', 'none'];
+              const currentIndex = formats.indexOf(clockFormat);
+              const nextIndex = (currentIndex + 1) % formats.length;
+              setClockFormat(formats[nextIndex]);
+            }}
+            className="flex items-center gap-1 px-2 py-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-xs"
+            title={`Clock format: ${clockFormat}`}
           >
             <Clock className="w-3 h-3" />
-            {clockFormat === '12hr' ? '12hr' : '24hr'}
           </button>
 
           {/* Tides Button */}
           <button 
             onClick={() => setShowTides(!showTides)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-sm"
+            className="flex items-center gap-1 px-2 py-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-xs"
           >
             <Waves className="w-3 h-3" />
-            {showTides ? 'Hide' : 'Tides'}
           </button>
+
+          {/* About Button */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className="flex items-center gap-1 px-2 py-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-xs">
+                <Info className="w-3 h-3" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="h-96">
+              <SheetHeader>
+                <SheetTitle>About SolCue</SheetTitle>
+                <SheetDescription className="text-left space-y-4 mt-4">
+                  <p>
+                    SolCue is a circadian light tracker that helps you understand and optimize your daily light exposure for better sleep and well-being.
+                  </p>
+                  <p>
+                    The circular clock shows different phases of natural light throughout the day:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 ml-4">
+                    <li><strong>Prime Windows:</strong> Optimal times for light exposure (morning and evening)</li>
+                    <li><strong>Twilight Phases:</strong> Civil, nautical, and astronomical transitions</li>
+                    <li><strong>Day/Night Cycle:</strong> Visual representation of your circadian rhythm</li>
+                  </ul>
+                  <p>
+                    Use the color themes and time formats to customize your experience. The background extends the natural light patterns from the clock for an immersive experience.
+                  </p>
+                </SheetDescription>
+              </SheetHeader>
+            </SheetContent>
+          </Sheet>
         </div>
         
         {/* Tide Information */}
