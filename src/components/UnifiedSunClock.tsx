@@ -77,7 +77,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const [currentTheme, setCurrentTheme] = useState('default');
   const [clockFormat, setClockFormat] = useState<ClockFormat>('12hr');
   const [isTracking, setIsTracking] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [timeElapsed, setTimeElapsed] = useState(0);
 
   const theme = colorThemes[currentTheme as keyof typeof colorThemes];
 
@@ -88,21 +88,15 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     return () => clearInterval(timer);
   }, []);
 
-  // Timer countdown effect
+  // Timer count up effect
   useEffect(() => {
-    if (isTracking && timeRemaining > 0) {
+    if (isTracking) {
       const timer = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            setIsTracking(false);
-            return 0;
-          }
-          return prev - 1;
-        });
+        setTimeElapsed(prev => prev + 1);
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [isTracking, timeRemaining]);
+  }, [isTracking]);
 
   // Convert hours to angle (24-hour clock, midnight at top)
   const hoursToAngle = (hours: number) => (hours / 24) * 360;
@@ -421,9 +415,14 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const sunX = 50 + Math.cos((sunAngle * Math.PI) / 180) * 30;
   const sunY = 50 + Math.sin((sunAngle * Math.PI) / 180) * 30;
 
-  const handleStartTracking = () => {
-    setIsTracking(true);
-    setTimeRemaining(600); // 10 minutes in seconds
+  const handleToggleTracking = () => {
+    if (isTracking) {
+      setIsTracking(false);
+      setTimeElapsed(0);
+    } else {
+      setIsTracking(true);
+      setTimeElapsed(0);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -507,30 +506,29 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               );
             })}
 
-            {/* Hour lines for 'main' format */}
+            {/* Hour lines for 'main' format - in the black band */}
             {clockFormat === 'main' && Array.from({ length: 24 }, (_, i) => {
               if ([0, 6, 12, 18].includes(i)) return null; // Skip main hours
               const angle = hoursToAngle(i) - 90;
-              const innerRadius = 115;
-              const outerRadius = 125;
+              const innerRadius = 135;
+              const outerRadius = 145;
               const x1 = 160 + Math.cos((angle * Math.PI) / 180) * innerRadius;
               const y1 = 160 + Math.sin((angle * Math.PI) / 180) * innerRadius;
               const x2 = 160 + Math.cos((angle * Math.PI) / 180) * outerRadius;
               const y2 = 160 + Math.sin((angle * Math.PI) / 180) * outerRadius;
               
               return (
-                <div
-                  key={`line-${i}`}
-                  className="absolute bg-white/40"
-                  style={{
-                    left: x1,
-                    top: y1,
-                    width: '1px',
-                    height: Math.sqrt((x2-x1)**2 + (y2-y1)**2),
-                    transformOrigin: '0 0',
-                    transform: `rotate(${angle + 90}deg)`
-                  }}
-                />
+                <svg key={`line-${i}`} className="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
+                  <line
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke="white"
+                    strokeWidth="1"
+                    opacity="0.4"
+                  />
+                </svg>
               );
             })}
 
@@ -635,14 +633,13 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
           </div>
         </div>
 
-        {/* Start Light Tracking Button */}
+        {/* Start/Stop Light Tracking Button */}
         <div className="mb-2">
           <button 
-            onClick={handleStartTracking}
-            disabled={isTracking}
-            className="px-3 py-1 bg-white/10 backdrop-blur-md text-white/80 text-xs rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleToggleTracking}
+            className="px-3 py-1 bg-white/10 backdrop-blur-md text-white/80 text-xs rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20"
           >
-            {isTracking ? 'Tracking...' : 'Start Light Tracking'}
+            {isTracking ? 'Stop Light Tracking' : 'Start Light Tracking'}
           </button>
         </div>
 
@@ -650,7 +647,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
         {isTracking && (
           <div className="mb-6 text-center animate-fade-in">
             <div className="text-lg font-mono text-white/90 mb-1">
-              {formatTime(timeRemaining)}
+              {formatTime(timeElapsed)}
             </div>
             <div className="text-xs text-white/70">
               Outdoor light exposure time
@@ -706,15 +703,18 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                 <Info className="w-3 h-3" />
               </button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="h-96">
+            <SheetContent side="bottom" className="h-96 overflow-y-auto">
               <SheetHeader>
                 <SheetTitle>About SolCue - Ocean State of Mind</SheetTitle>
-                <SheetDescription className="text-left space-y-4 mt-4">
+                <SheetDescription className="text-left space-y-4 mt-4 overflow-y-auto">
                   <p>
                     SolCue embodies the "Ocean State of Mind" philosophy - a way of living that honors natural rhythms and cycles. In our modern world of artificial light and disconnected schedules, we've lost touch with the fundamental patterns that have guided life for millions of years.
                   </p>
                   <p>
                     <strong>Why This Matters Now:</strong> Research shows that exposure to natural light at specific times - particularly 2 hours after sunrise and 2 hours before sunset - is crucial for maintaining healthy circadian rhythms. These "prime windows" help regulate sleep, mood, metabolism, and overall well-being.
+                  </p>
+                  <p>
+                    <strong>Rewilding Through Light:</strong> Syncing with the rhythm of light is a first solid step towards rewilding yourself - remembering who you are when in tune with nature and your own nature. This isn't just about better sleep; it's about reconnecting with the ancient wisdom encoded in your biology.
                   </p>
                   <p>
                     <strong>The Natural Cycle:</strong> The circular clock visualizes the complete daily light cycle, showing different phases of natural light throughout the day:
@@ -728,7 +728,10 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                     <strong>Ocean State Connection:</strong> Like the tides that ebb and flow with celestial rhythms, our bodies are designed to sync with natural light patterns. By attuning ourselves to these cycles, we can experience greater energy, better sleep, and deeper connection to the natural world around us.
                   </p>
                   <p>
-                    Use the "Start Light Tracking" feature during prime windows to build healthy light exposure habits that honor your body's ancient wisdom.
+                    <strong>Your Rewilding Journey:</strong> Each moment you spend outside during the prime windows is a step back toward your natural self. It's about remembering that you are not separate from nature - you ARE nature. When you align with these ancient rhythms, you begin to remember what it feels like to be truly alive and connected.
+                  </p>
+                  <p>
+                    Use the "Start Light Tracking" feature during prime windows to build healthy light exposure habits that honor your body's ancient wisdom and support your journey back to wholeness.
                   </p>
                 </SheetDescription>
               </SheetHeader>
