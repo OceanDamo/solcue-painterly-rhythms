@@ -10,4 +10,11 @@ end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
+  
+  # Disable sandbox for build scripts to fix permission issues
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+    end
+  end
 end
