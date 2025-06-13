@@ -1,5 +1,4 @@
 
-
 platform :ios, '14.0'
 
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
@@ -18,5 +17,13 @@ post_install do |installer|
       config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
     end
   end
+  
+  # Also disable sandbox for the main project
+  installer.generated_projects.each do |project|
+    project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+      end
+    end
+  end
 end
-
