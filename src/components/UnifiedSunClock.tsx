@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon, Waves, Clock } from 'lucide-react';
 
@@ -332,16 +333,15 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const getHourMarkers = () => {
     switch (clockFormat) {
       case '12hr':
-        return Array.from({ length: 24 }, (_, i) => {
-          const hour12 = i === 0 ? 12 : i > 12 ? i - 12 : i;
-          const suffix = i < 12 ? 'a' : 'p';
-          return {
-            hour: i,
-            display: `${hour12}${suffix}`,
-            angle: hoursToAngle(i) - 90,
-            isMainHour: i % 6 === 0
-          };
-        });
+        return Array.from({ length: 12 }, (_, i) => {
+          const hour24 = i === 0 ? 12 : i;
+          const hourAM = i;
+          const hourPM = i + 12;
+          return [
+            { hour: hourAM, display: `${hour24}${i < 6 ? 'a' : 'a'}`, angle: hoursToAngle(hourAM) - 90, isMainHour: i % 3 === 0 },
+            { hour: hourPM, display: `${hour24}${i < 6 ? 'p' : 'p'}`, angle: hoursToAngle(hourPM) - 90, isMainHour: i % 3 === 0 }
+          ];
+        }).flat();
       
       case '24hr':
         return Array.from({ length: 24 }, (_, i) => ({
@@ -365,55 +365,16 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     }
   };
 
-  // Generate tick marks for main + lines format
-  const getTickMarks = () => {
-    if (clockFormat !== 'main') return [];
-    
-    return Array.from({ length: 24 }, (_, i) => {
-      if (i % 6 === 0) return null; // Skip main hours
-      
-      const angle = hoursToAngle(i) - 90;
-      const radius = 120;
-      const x1 = 160 + Math.cos((angle * Math.PI) / 180) * (radius - 8);
-      const y1 = 160 + Math.sin((angle * Math.PI) / 180) * (radius - 8);
-      const x2 = 160 + Math.cos((angle * Math.PI) / 180) * (radius - 3);
-      const y2 = 160 + Math.sin((angle * Math.PI) / 180) * (radius - 3);
-      
-      return { x1, y1, x2, y2 };
-    }).filter(Boolean);
-  };
-
   const hourMarkers = getHourMarkers();
-  const tickMarks = getTickMarks();
-
-  // Calculate sun position for background light emanation
-  const sunX = 50 + Math.cos((sunAngle * Math.PI) / 180) * 30; // Center around 50% with some movement
-  const sunY = 50 + Math.sin((sunAngle * Math.PI) / 180) * 30;
-
-  // Get sun brightness for background effect
-  const getSunBrightness = () => {
-    if (currentHour >= sunTimes.sunrise && currentHour <= sunTimes.sunset) {
-      // Daytime - stronger emanation
-      return 0.15;
-    } else if ((currentHour >= sunTimes.civilTwilightEnd && currentHour < sunTimes.sunrise) ||
-               (currentHour > sunTimes.sunset && currentHour <= sunTimes.civilTwilightStart)) {
-      // Twilight - medium emanation
-      return 0.08;
-    } else {
-      // Night - very subtle emanation
-      return 0.03;
-    }
-  };
-
-  const sunBrightness = getSunBrightness();
 
   return (
-    <div 
-      className="min-h-screen p-4 flex flex-col items-center justify-center relative overflow-hidden"
-      style={{
-        background: `radial-gradient(circle at ${sunX}% ${sunY}%, ${sunColors.from}${Math.floor(sunBrightness * 255).toString(16).padStart(2, '0')} 0%, ${sunColors.via}${Math.floor(sunBrightness * 0.6 * 255).toString(16).padStart(2, '0')} 25%, ${sunColors.to}${Math.floor(sunBrightness * 0.3 * 255).toString(16).padStart(2, '0')} 50%, #000000 70%)`
-      }}
-    >
+    <div className={`min-h-screen bg-gradient-to-br ${theme.background} p-4 flex flex-col items-center justify-center relative overflow-hidden`}>
+      {/* Atmospheric background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-radial from-blue-400/10 to-transparent rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-radial from-purple-400/10 to-transparent rounded-full blur-2xl animate-pulse delay-1000"></div>
+      </div>
+
       <div className="relative z-10 max-w-2xl mx-auto text-center flex-1 flex flex-col justify-center">
         {/* Header */}
         <div className="mb-8">
@@ -454,25 +415,11 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
                   className={segment.isPrime && inPrimeWindow ? 'animate-[pulse_8s_ease-in-out_infinite]' : ''}
                 />
               ))}
-
-              {/* Tick marks for main + lines format */}
-              {tickMarks.map((tick, index) => (
-                <line
-                  key={index}
-                  x1={tick.x1}
-                  y1={tick.y1}
-                  x2={tick.x2}
-                  y2={tick.y2}
-                  stroke="white"
-                  strokeWidth="0.5"
-                  opacity="0.6"
-                />
-              ))}
             </svg>
 
-            {/* Hour markers with equal padding from edge */}
+            {/* Hour markers with consistent padding */}
             {clockFormat !== 'none' && hourMarkers.map((marker, index) => {
-              const radius = 138; // Consistent distance from center
+              const radius = 135;
               const x = 160 + Math.cos((marker.angle * Math.PI) / 180) * radius;
               const y = 160 + Math.sin((marker.angle * Math.PI) / 180) * radius;
               
@@ -599,22 +546,22 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
 
         {/* Minimized Action Button */}
         <div className="mb-6">
-          <button className="px-3 py-1 bg-white/10 backdrop-blur-md text-white/70 text-xs rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20">
-            {inPrimeWindow ? 'Start Light Tracking' : 'Start Light Tracking'}
+          <button className="px-4 py-1.5 bg-white/10 backdrop-blur-md text-white/80 text-sm rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20">
+            {inPrimeWindow ? 'Start Light Session' : 'Manual Session'}
           </button>
         </div>
 
         {/* Simplified Controls */}
-        <div className="flex gap-4 justify-center items-center">
-          {/* Color Selector - Tiny colored circles */}
+        <div className="flex gap-6 justify-center items-center">
+          {/* Simplified Color Selector - Tiny colored circles */}
           <div className="flex gap-2">
             {Object.entries(colorThemes).map(([key, themeOption]) => (
               <button
                 key={key}
                 onClick={() => setCurrentTheme(key)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                className={`w-4 h-4 rounded-full transition-all duration-300 ${
                   currentTheme === key 
-                    ? 'ring-1 ring-white/60 ring-offset-1 ring-offset-black scale-125' 
+                    ? 'ring-2 ring-white/60 ring-offset-2 ring-offset-black' 
                     : 'hover:scale-110'
                 }`}
                 style={{ backgroundColor: themeOption.representativeColor }}
@@ -623,26 +570,22 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
             ))}
           </div>
 
-          {/* Time Format Selector - Just clock icon */}
+          {/* Simplified Time Format Selector */}
           <button 
-            onClick={() => {
-              const formats: ClockFormat[] = ['12hr', '24hr', 'main', 'none'];
-              const currentIndex = formats.indexOf(clockFormat);
-              const nextIndex = (currentIndex + 1) % formats.length;
-              setClockFormat(formats[nextIndex]);
-            }}
-            className="flex items-center gap-1 p-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300"
-            title={`Current: ${clockFormat}`}
+            onClick={() => setClockFormat(clockFormat === '12hr' ? '24hr' : '12hr')}
+            className="flex items-center gap-1 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-sm"
           >
             <Clock className="w-3 h-3" />
+            {clockFormat === '12hr' ? '12hr' : '24hr'}
           </button>
 
           {/* Tides Button */}
           <button 
             onClick={() => setShowTides(!showTides)}
-            className="flex items-center gap-1 p-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300"
+            className="flex items-center gap-1 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-sm"
           >
             <Waves className="w-3 h-3" />
+            {showTides ? 'Hide' : 'Tides'}
           </button>
         </div>
         
