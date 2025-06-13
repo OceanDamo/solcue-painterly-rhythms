@@ -26,15 +26,21 @@ const UnifiedSunClock = () => {
   const minutes = time.getMinutes();
   const totalMinutes = hours * 60 + minutes;
   
-  // Simulate sunrise/sunset times (6 AM / 6 PM for demo)
-  const sunriseMinutes = 6 * 60; // 6:00 AM
-  const sunsetMinutes = 18 * 60; // 6:00 PM
+  // Realistic twilight times (based on common latitude)
+  const astronomicalDawnStart = 4 * 60 + 30; // 4:30 AM
+  const nauticalDawnStart = 5 * 60 + 15; // 5:15 AM
+  const civilDawnStart = 5 * 60 + 45; // 5:45 AM
+  const sunriseMinutes = 6 * 60 + 15; // 6:15 AM
+  const sunsetMinutes = 18 * 60 + 45; // 6:45 PM
+  const civilDuskEnd = 19 * 60 + 15; // 7:15 PM
+  const nauticalDuskEnd = 19 * 60 + 45; // 7:45 PM
+  const astronomicalDuskEnd = 20 * 60 + 30; // 8:30 PM
   
-  // Extended prime windows (2h 15m each)
-  const morningPrimeStart = sunriseMinutes - 15; // 5:45 AM
-  const morningPrimeEnd = sunriseMinutes + 135; // 8:15 AM
-  const eveningPrimeStart = sunsetMinutes - 120; // 3:45 PM
-  const eveningPrimeEnd = sunsetMinutes + 15; // 6:15 PM
+  // Prime windows (extended golden hours)
+  const morningPrimeStart = civilDawnStart; // 5:45 AM
+  const morningPrimeEnd = sunriseMinutes + 90; // 7:45 AM
+  const eveningPrimeStart = sunsetMinutes - 90; // 5:15 PM
+  const eveningPrimeEnd = civilDuskEnd; // 7:15 PM
   
   const inMorningPrime = totalMinutes >= morningPrimeStart && totalMinutes <= morningPrimeEnd;
   const inEveningPrime = totalMinutes >= eveningPrimeStart && totalMinutes <= eveningPrimeEnd;
@@ -44,35 +50,47 @@ const UnifiedSunClock = () => {
     setIsInPrimeWindow(currentlyInPrime);
   }, [currentlyInPrime]);
 
-  // Color themes
+  // Enhanced color themes with all twilight phases
   const colorThemes = {
     natural: {
+      astronomical: '#1a1a2e',
+      nautical: '#16213e',
+      civil: '#0f3460',
       daylight: '#FFD700',
       prime: '#FF8C00',
-      night: '#2C3E50',
+      night: '#0d1117',
       background: 'from-blue-400 via-purple-500 to-pink-500',
       sunGlow: '#FFD700'
     },
     ocean: {
+      astronomical: '#001122',
+      nautical: '#002244',
+      civil: '#003366',
       daylight: '#00CED1',
       prime: '#1E90FF',
-      night: '#191970',
+      night: '#000811',
       background: 'from-cyan-400 via-blue-500 to-indigo-600',
       sunGlow: '#00CED1'
     },
-    forest: {
-      daylight: '#32CD32',
-      prime: '#228B22',
-      night: '#2F4F4F',
-      background: 'from-green-400 via-emerald-500 to-teal-600',
-      sunGlow: '#32CD32'
+    purple: {
+      astronomical: '#2d1b69',
+      nautical: '#4c2c85',
+      civil: '#6a3d9a',
+      daylight: '#9f7aea',
+      prime: '#805ad5',
+      night: '#1a0b3d',
+      background: 'from-purple-400 via-pink-500 to-red-500',
+      sunGlow: '#9f7aea'
     },
-    sunset: {
-      daylight: '#FF6347',
-      prime: '#FF4500',
-      night: '#8B0000',
-      background: 'from-orange-400 via-red-500 to-purple-600',
-      sunGlow: '#FF6347'
+    monochrome: {
+      astronomical: '#1a1a1a',
+      nautical: '#2d2d2d',
+      civil: '#404040',
+      daylight: '#ffffff',
+      prime: '#d4d4d8',
+      night: '#000000',
+      background: 'from-gray-400 via-gray-600 to-gray-800',
+      sunGlow: '#ffffff'
     }
   };
 
@@ -81,7 +99,7 @@ const UnifiedSunClock = () => {
   // Calculate sun position
   const sunAngle = (totalMinutes / (24 * 60)) * 360;
   
-  // Generate 24 segments extending to center
+  // Generate 24 segments extending to center with proper twilight phases
   const generateSegments = () => {
     const segments = [];
     for (let i = 0; i < 24; i++) {
@@ -89,14 +107,34 @@ const UnifiedSunClock = () => {
       const segmentEnd = (i + 1) * 15;
       const hourMinutes = i * 60;
       
-      // Determine if this hour is in daylight
-      const isDaylight = hourMinutes >= sunriseMinutes && hourMinutes < sunsetMinutes;
-      const isPrimeTime = (hourMinutes >= morningPrimeStart && hourMinutes <= morningPrimeEnd) ||
-                         (hourMinutes >= eveningPrimeStart && hourMinutes <= eveningPrimeEnd);
-      
+      // Determine light phase for this hour
       let segmentColor = currentTheme.night;
-      if (isDaylight) {
+      let opacity = 0.3;
+      
+      if (hourMinutes >= astronomicalDawnStart && hourMinutes < nauticalDawnStart) {
+        segmentColor = currentTheme.astronomical;
+        opacity = 0.5;
+      } else if (hourMinutes >= nauticalDawnStart && hourMinutes < civilDawnStart) {
+        segmentColor = currentTheme.nautical;
+        opacity = 0.6;
+      } else if (hourMinutes >= civilDawnStart && hourMinutes < sunriseMinutes) {
+        segmentColor = currentTheme.civil;
+        opacity = 0.7;
+      } else if (hourMinutes >= sunriseMinutes && hourMinutes < sunsetMinutes) {
+        // Daylight hours
+        const isPrimeTime = (hourMinutes >= morningPrimeStart && hourMinutes <= morningPrimeEnd) ||
+                           (hourMinutes >= eveningPrimeStart && hourMinutes <= eveningPrimeEnd);
         segmentColor = isPrimeTime ? currentTheme.prime : currentTheme.daylight;
+        opacity = 0.9;
+      } else if (hourMinutes >= sunsetMinutes && hourMinutes < civilDuskEnd) {
+        segmentColor = currentTheme.civil;
+        opacity = 0.7;
+      } else if (hourMinutes >= civilDuskEnd && hourMinutes < nauticalDuskEnd) {
+        segmentColor = currentTheme.nautical;
+        opacity = 0.6;
+      } else if (hourMinutes >= nauticalDuskEnd && hourMinutes < astronomicalDuskEnd) {
+        segmentColor = currentTheme.astronomical;
+        opacity = 0.5;
       }
       
       // Calculate path for segment extending to center
@@ -125,7 +163,7 @@ const UnifiedSunClock = () => {
           key={i}
           d={pathData}
           fill={segmentColor}
-          opacity={isDaylight ? 0.9 : 0.4}
+          opacity={opacity}
           stroke="rgba(255,255,255,0.1)"
           strokeWidth="0.5"
         />
@@ -164,7 +202,8 @@ const UnifiedSunClock = () => {
             </SheetHeader>
             <div className="mt-6 space-y-4 text-white/90 font-light">
               <p>A natural rhythm tracker that helps you align with optimal light exposure times.</p>
-              <p>The colored segments show daylight hours and prime light windows for circadian health.</p>
+              <p>The colored segments show different phases of natural light including astronomical, nautical, and civil twilight periods.</p>
+              <p>Prime windows indicate optimal times for circadian light exposure.</p>
               <p>Created to help you reconnect with nature's timing.</p>
             </div>
           </SheetContent>
@@ -183,8 +222,8 @@ const UnifiedSunClock = () => {
                   <SelectContent>
                     <SelectItem value="natural">Natural</SelectItem>
                     <SelectItem value="ocean">Ocean</SelectItem>
-                    <SelectItem value="forest">Forest</SelectItem>
-                    <SelectItem value="sunset">Sunset</SelectItem>
+                    <SelectItem value="purple">Purple</SelectItem>
+                    <SelectItem value="monochrome">Monochrome</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
