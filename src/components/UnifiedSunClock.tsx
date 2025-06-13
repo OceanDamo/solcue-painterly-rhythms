@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon, Waves, Clock, Info } from 'lucide-react';
 import {
@@ -77,6 +76,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const [showTides, setShowTides] = useState(false);
   const [currentTheme, setCurrentTheme] = useState('default');
   const [clockFormat, setClockFormat] = useState<ClockFormat>('12hr');
+  const [isTracking, setIsTracking] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(0);
 
   const theme = colorThemes[currentTheme as keyof typeof colorThemes];
 
@@ -86,6 +87,22 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (isTracking && timeRemaining > 0) {
+      const timer = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            setIsTracking(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [isTracking, timeRemaining]);
 
   // Convert hours to angle (24-hour clock, midnight at top)
   const hoursToAngle = (hours: number) => (hours / 24) * 360;
@@ -404,11 +421,22 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
   const sunX = 50 + Math.cos((sunAngle * Math.PI) / 180) * 30;
   const sunY = 50 + Math.sin((sunAngle * Math.PI) / 180) * 30;
 
+  const handleStartTracking = () => {
+    setIsTracking(true);
+    setTimeRemaining(600); // 10 minutes in seconds
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div 
       className="min-h-screen p-4 flex flex-col items-center justify-center relative overflow-hidden"
       style={{
-        background: `radial-gradient(circle at ${sunX}% ${sunY}%, ${currentLightColor}15 0%, ${currentLightColor}08 25%, ${theme.deepNight}90 50%, ${theme.deepNight} 100%)`
+        background: '#000000'
       }}
     >
       <div className="relative z-10 max-w-2xl mx-auto text-center flex-1 flex flex-col justify-center">
@@ -422,8 +450,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
         <div className="relative flex justify-center items-center mb-8">
           {/* Clock Face */}
           <div className="relative w-80 h-80">
-            {/* Background circle */}
-            <div className="absolute inset-0 rounded-full bg-black/30 backdrop-blur-sm border border-white/20"></div>
+            {/* Background circle - now black */}
+            <div className="absolute inset-0 rounded-full bg-black/80 backdrop-blur-sm border border-white/20"></div>
             
             {/* Clock segments - now full pie slices */}
             <svg className="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
@@ -453,7 +481,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               ))}
             </svg>
 
-            {/* Hour markers with consistent padding */}
+            {/* Hour markers with black background and consistent padding */}
             {clockFormat !== 'none' && hourMarkers.map((marker, index) => {
               const radius = 135;
               const x = 160 + Math.cos((marker.angle * Math.PI) / 180) * radius;
@@ -462,14 +490,14 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
               return (
                 <div
                   key={index}
-                  className="absolute text-white font-light flex items-center justify-center"
+                  className="absolute text-white font-light flex items-center justify-center bg-black/60 rounded-full"
                   style={{
                     left: x - 15,
                     top: y - 10,
                     width: '30px',
                     height: '20px',
                     fontSize: marker.isMainHour ? '12px' : '10px',
-                    opacity: marker.isMainHour ? 0.8 : 0.5,
+                    opacity: marker.isMainHour ? 0.9 : 0.6,
                     fontWeight: '300',
                     textShadow: '0 0 4px rgba(0,0,0,0.8)'
                   }}
@@ -607,12 +635,28 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
           </div>
         </div>
 
-        {/* Minimized Action Button */}
-        <div className="mb-6">
-          <button className="px-3 py-1 bg-white/10 backdrop-blur-md text-white/80 text-xs rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20">
-            {inPrimeWindow ? 'Start Light Tracking' : 'Start Light Tracking'}
+        {/* Start Light Tracking Button */}
+        <div className="mb-2">
+          <button 
+            onClick={handleStartTracking}
+            disabled={isTracking}
+            className="px-3 py-1 bg-white/10 backdrop-blur-md text-white/80 text-xs rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isTracking ? 'Tracking...' : 'Start Light Tracking'}
           </button>
         </div>
+
+        {/* Timer Display */}
+        {isTracking && (
+          <div className="mb-6 text-center animate-fade-in">
+            <div className="text-lg font-mono text-white/90 mb-1">
+              {formatTime(timeRemaining)}
+            </div>
+            <div className="text-xs text-white/70">
+              Outdoor light exposure time
+            </div>
+          </div>
+        )}
 
         {/* Simplified Controls */}
         <div className="flex gap-6 justify-center items-center">
@@ -664,21 +708,27 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({ currentTime = new Dat
             </SheetTrigger>
             <SheetContent side="bottom" className="h-96">
               <SheetHeader>
-                <SheetTitle>About SolCue</SheetTitle>
+                <SheetTitle>About SolCue - Ocean State of Mind</SheetTitle>
                 <SheetDescription className="text-left space-y-4 mt-4">
                   <p>
-                    SolCue is a circadian light tracker that helps you understand and optimize your daily light exposure for better sleep and well-being.
+                    SolCue embodies the "Ocean State of Mind" philosophy - a way of living that honors natural rhythms and cycles. In our modern world of artificial light and disconnected schedules, we've lost touch with the fundamental patterns that have guided life for millions of years.
                   </p>
                   <p>
-                    The circular clock shows different phases of natural light throughout the day:
+                    <strong>Why This Matters Now:</strong> Research shows that exposure to natural light at specific times - particularly 2 hours after sunrise and 2 hours before sunset - is crucial for maintaining healthy circadian rhythms. These "prime windows" help regulate sleep, mood, metabolism, and overall well-being.
+                  </p>
+                  <p>
+                    <strong>The Natural Cycle:</strong> The circular clock visualizes the complete daily light cycle, showing different phases of natural light throughout the day:
                   </p>
                   <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li><strong>Prime Windows:</strong> Optimal times for light exposure (morning and evening)</li>
-                    <li><strong>Twilight Phases:</strong> Civil, nautical, and astronomical transitions</li>
-                    <li><strong>Day/Night Cycle:</strong> Visual representation of your circadian rhythm</li>
+                    <li><strong>Prime Windows:</strong> Optimal times for 10+ minutes of outdoor light exposure</li>
+                    <li><strong>Twilight Phases:</strong> Civil, nautical, and astronomical transitions that affect melatonin production</li>
+                    <li><strong>Day/Night Cycle:</strong> Visual representation of your body's natural circadian rhythm</li>
                   </ul>
                   <p>
-                    Use the color themes and time formats to customize your experience. The background extends the natural light patterns from the clock for an immersive experience.
+                    <strong>Ocean State Connection:</strong> Like the tides that ebb and flow with celestial rhythms, our bodies are designed to sync with natural light patterns. By attuning ourselves to these cycles, we can experience greater energy, better sleep, and deeper connection to the natural world around us.
+                  </p>
+                  <p>
+                    Use the "Start Light Tracking" feature during prime windows to build healthy light exposure habits that honor your body's ancient wisdom.
                   </p>
                 </SheetDescription>
               </SheetHeader>
