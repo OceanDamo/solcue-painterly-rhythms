@@ -2,7 +2,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.a34cb0d75f9b47cda9e6d2923619dfd4',
+  appId: 'com.OceanDamo.solcue',
   appName: 'SolCue',
   webDir: 'dist',
   server: {
