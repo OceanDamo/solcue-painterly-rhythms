@@ -1,35 +1,7 @@
 
-
 platform :ios, '14.0'
 
-# Find the node_modules directory by searching upward from the current directory
-def find_node_modules_path
-  current_dir = __dir__
-  while current_dir != '/'
-    node_modules_path = File.join(current_dir, 'node_modules')
-    if Dir.exist?(node_modules_path)
-      return File.join(node_modules_path, '@capacitor/ios/scripts/pods_helpers')
-    end
-    current_dir = File.dirname(current_dir)
-  end
-  
-  # Fallback paths to try
-  fallback_paths = [
-    '../../node_modules/@capacitor/ios/scripts/pods_helpers',
-    '../../../node_modules/@capacitor/ios/scripts/pods_helpers',
-    '../../../../node_modules/@capacitor/ios/scripts/pods_helpers',
-    '../../../../../node_modules/@capacitor/ios/scripts/pods_helpers'
-  ]
-  
-  fallback_paths.each do |path|
-    full_path = File.expand_path(path, __dir__)
-    return path if File.exist?(full_path)
-  end
-  
-  raise "Could not find @capacitor/ios/scripts/pods_helpers"
-end
-
-require_relative find_node_modules_path
+require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
 target 'App' do
   capacitor_pods
@@ -94,4 +66,3 @@ post_install do |installer|
     end
   end
 end
-
