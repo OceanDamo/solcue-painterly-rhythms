@@ -1,4 +1,5 @@
 
+
 platform :ios, '14.0'
 
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
@@ -13,6 +14,9 @@ post_install do |installer|
   
   # Clean up any .DS_Store files that might interfere with code signing
   system("find #{installer.sandbox.root} -name '.DS_Store' -type f -delete")
+  
+  # Fix script permissions
+  system("find #{installer.sandbox.root} -name '*.sh' -exec chmod +x {} \\;")
   
   # Disable code signing for all targets
   installer.pods_project.targets.each do |target|
@@ -34,6 +38,8 @@ post_install do |installer|
       # Additional sandboxing fixes
       config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
       config.build_settings['VALID_ARCHS'] = 'arm64 x86_64'
+      config.build_settings['ENABLE_HARDENED_RUNTIME'] = 'NO'
+      config.build_settings['DISABLE_MANUAL_TARGET_ORDER_BUILD_WARNING'] = 'YES'
     end
   end
   
@@ -52,6 +58,7 @@ post_install do |installer|
         config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''
         config.build_settings['EXPANDED_CODE_SIGN_IDENTITY_NAME'] = ''
         config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
+        config.build_settings['ENABLE_HARDENED_RUNTIME'] = 'NO'
       end
     end
   end
@@ -60,9 +67,17 @@ post_install do |installer|
   installer.aggregate_targets.each do |aggregate_target|
     aggregate_target.user_build_configurations.each do |config_name, config_file|
       xcconfig_path = aggregate_target.client_root + aggregate_target.xcconfig_relative_path(config_name)
-      xcconfig = File.read(xcconfig_path)
-      xcconfig_mod = xcconfig.gsub(/DT_TOOLCHAIN_DIR/, "TOOLCHAIN_DIR")
-      File.open(xcconfig_path, "w") { |file| file << xcconfig_mod }
+      if File.exist?(xcconfig_path)
+        xcconfig = File.read(xcconfig_path)
+        xcconfig_mod = xcconfig.gsub(/DT_TOOLCHAIN_DIR/, "TOOLCHAIN_DIR")
+        File.open(xcconfig_path, "w") { |file| file << xcconfig_mod }
+      end
     end
   end
+  
+  # Additional fix for script execution permissions
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+  end
 end
+
