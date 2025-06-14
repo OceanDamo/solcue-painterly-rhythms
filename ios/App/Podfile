@@ -1,5 +1,4 @@
 
-
 platform :ios, '14.0'
 
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
@@ -67,4 +66,3 @@ post_install do |installer|
     end
   end
 end
-
