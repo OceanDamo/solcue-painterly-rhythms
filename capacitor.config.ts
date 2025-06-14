@@ -12,6 +12,11 @@ const config: CapacitorConfig = {
   bundledWebRuntime: false,
   ios: {
     path: 'ios/App'
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true
+    }
   }
 };
 
