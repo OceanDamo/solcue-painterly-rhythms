@@ -1,5 +1,4 @@
 
-
 platform :ios, '14.0'
 
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
@@ -12,6 +11,7 @@ end
 post_install do |installer|
   assertDeploymentTarget(installer)
   
+  # Disable code signing for all targets
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
@@ -23,10 +23,14 @@ post_install do |installer|
       config.build_settings['DEVELOPMENT_TEAM'] = ''
       config.build_settings['CODE_SIGN_ENTITLEMENTS'] = ''
       config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
+      config.build_settings['PROVISIONING_PROFILE'] = ''
+      config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''
+      config.build_settings['EXPANDED_CODE_SIGN_IDENTITY_NAME'] = ''
+      config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
     end
   end
   
-  # Also disable for the main project
+  # Also disable for the main project and all generated projects
   installer.generated_projects.each do |project|
     project.targets.each do |target|
       target.build_configurations.each do |config|
@@ -37,8 +41,21 @@ post_install do |installer|
         config.build_settings['DEVELOPMENT_TEAM'] = ''
         config.build_settings['CODE_SIGN_ENTITLEMENTS'] = ''
         config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
+        config.build_settings['PROVISIONING_PROFILE'] = ''
+        config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''
+        config.build_settings['EXPANDED_CODE_SIGN_IDENTITY_NAME'] = ''
+        config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
       end
     end
   end
+  
+  # Specifically target the main App project
+  installer.aggregate_targets.each do |aggregate_target|
+    aggregate_target.user_build_configurations.each do |config_name, config_file|
+      xcconfig_path = aggregate_target.client_root + aggregate_target.xcconfig_relative_path(config_name)
+      xcconfig = File.read(xcconfig_path)
+      xcconfig_mod = xcconfig.gsub(/DT_TOOLCHAIN_DIR/, "TOOLCHAIN_DIR")
+      File.open(xcconfig_path, "w") { |file| file << xcconfig_mod }
+    end
+  end
 end
-
