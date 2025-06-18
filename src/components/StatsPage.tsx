@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
-import { Plus, Calendar } from 'lucide-react';
+import { Plus, Sun, Moon, Heart, Zap, Brain, Bed } from 'lucide-react';
+import AddSessionModal from './AddSessionModal';
 
 interface StatsPageProps {
   currentTime: Date;
@@ -11,24 +11,106 @@ const mockStats = {
   dayStreak: 7,
   weeklyMinutes: 142,
   primeMinutes: 89,
-  moodScore: 6,
+  pulseScores: { sleep: 6, mood: 7, energy: 5, focus: 6 },
   lastSessionDate: new Date(),
-  naturalRhythms: [
-    { id: 1, name: 'Dream Deeper', description: 'Sleep Harmony', requiredDays: 3, currentDays: 2, state: 'flowing' },
-    { id: 2, name: 'Heart Brighter', description: 'Mood Flow', requiredDays: 4, currentDays: 4, state: 'harmony' },
-    { id: 3, name: 'Mind Clearer', description: 'Focus Flow', requiredDays: 2, currentDays: 0, state: 'invitation' },
-    { id: 4, name: 'Body Wiser', description: 'Digestive Flow', requiredDays: 3, currentDays: 1, state: 'flowing' },
-    { id: 5, name: 'Shield Stronger', description: 'Immune Flow', requiredDays: 4, currentDays: 0, state: 'invitation' },
-    { id: 6, name: 'Hunger Balanced', description: 'Metabolic Flow', requiredDays: 7, currentDays: 3, state: 'flowing' },
-    { id: 7, name: 'Energy Flowing', description: 'Hormonal Flow', requiredDays: 5, currentDays: 5, state: 'harmony' },
-    { id: 8, name: 'Heart Steady', description: 'Cardiovascular Flow', requiredDays: 5, currentDays: 2, state: 'flowing' },
-    { id: 9, name: 'Mind Calm', description: 'Stress Flow', requiredDays: 5, currentDays: 0, state: 'invitation' }
+  circadianBenefits: [
+    { 
+      id: 1, 
+      name: 'Dream Fuel', 
+      description: 'Sleep Quality Enhancement', 
+      requiredDays: 3, 
+      currentDays: 2, 
+      state: 'flowing',
+      shortTip: 'Just 10–30 minutes of morning sunlight helps you fall asleep faster.',
+      evidence: 'Light exposure within 2 hours of waking helps regulate melatonin production and circadian rhythm, improving sleep quality in 2-4 days.'
+    },
+    { 
+      id: 2, 
+      name: 'Sunshine Boost', 
+      description: 'Mood Regulation', 
+      requiredDays: 4, 
+      currentDays: 4, 
+      state: 'harmony',
+      shortTip: 'A short sunrise walk boosts serotonin in just 4 days.',
+      evidence: '20+ minutes of outdoor light for 4 consecutive days increases serotonin production and supports positive mood regulation through light-sensitive pathways.'
+    },
+    { 
+      id: 3, 
+      name: 'Brain Bright', 
+      description: 'Cognitive Performance', 
+      requiredDays: 2, 
+      currentDays: 0, 
+      state: 'invitation',
+      shortTip: 'Just two days of morning sunlight can boost memory and focus.',
+      evidence: 'Morning light exposure for 2+ days enhances cognitive function through improved circadian rhythm regulation and increased alertness hormones.'
+    },
+    { 
+      id: 4, 
+      name: 'Gut Glow', 
+      description: 'Digestive Health', 
+      requiredDays: 3, 
+      currentDays: 1, 
+      state: 'flowing',
+      shortTip: 'Morning light helps your gut reset its rhythm in 3–4 days.',  
+      evidence: 'Light exposure helps synchronize gut microbiome circadian rhythms, improving digestive function and regularity within 3-4 days.'
+    },
+    { 
+      id: 5, 
+      name: 'Shield Mode', 
+      description: 'Immune Function', 
+      requiredDays: 4, 
+      currentDays: 0, 
+      state: 'invitation',
+      shortTip: 'Four days of sunlight supports immune system and fights inflammation.',
+      evidence: '4+ days of consistent light exposure strengthens immune function through vitamin D synthesis and circadian immune cell regulation.'
+    },
+    { 
+      id: 6, 
+      name: 'Crave Control', 
+      description: 'Metabolic Health', 
+      requiredDays: 7, 
+      currentDays: 3, 
+      state: 'flowing',
+      shortTip: 'Early sunlight for 1 week helps reset appetite and reduce cravings.',
+      evidence: '7 days of morning light exposure regulates appetite hormones (ghrelin/leptin) and improves metabolic function through circadian clock genes.'
+    },
+    { 
+      id: 7, 
+      name: 'Energy Flow', 
+      description: 'Hormonal Balance', 
+      requiredDays: 5, 
+      currentDays: 5, 
+      state: 'harmony',
+      shortTip: 'Morning light helps regulate cortisol and sex hormones in under a week.',
+      evidence: '5+ days of morning light exposure optimizes cortisol rhythm and supports healthy hormone production through hypothalamic-pituitary axis regulation.'
+    },
+    { 
+      id: 8, 
+      name: 'Heart Sync', 
+      description: 'Cardiovascular Health', 
+      requiredDays: 5, 
+      currentDays: 2, 
+      state: 'flowing',
+      shortTip: 'Morning light lowers blood pressure and supports heart rhythm.',
+      evidence: '5+ days of light exposure improves cardiovascular health through blood pressure regulation and heart rate variability optimization.'
+    },
+    { 
+      id: 9, 
+      name: 'Chill Shield', 
+      description: 'Stress Resilience', 
+      requiredDays: 5, 
+      currentDays: 0, 
+      state: 'invitation',
+      shortTip: '10 minutes of early sun for 3–5 days reduces cortisol spikes.',
+      evidence: '3-5 days of morning light exposure reduces stress hormone reactivity and improves stress resilience through improved circadian cortisol patterns.'
+    }
   ]
 };
 
 const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
   const [showAddSession, setShowAddSession] = useState(false);
-  const [selectedMood, setSelectedMood] = useState(mockStats.moodScore);
+  const [selectedScores, setSelectedScores] = useState(mockStats.pulseScores);
+  const [expandedBenefit, setExpandedBenefit] = useState<number | null>(null);
 
   const hours = currentTime.getHours();
 
@@ -118,12 +200,21 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
     }
   };
 
-  const moodEmojis = ['😰', '😟', '😐', '🙂', '😊', '😄', '🤩'];
-  const moodLabels = ['Very Low', 'Low', 'Below Average', 'Average', 'Good', 'Great', 'Excellent'];
+  const handleAddSession = (session: { date: string; time: string; duration: number }) => {
+    console.log('Adding session:', session);
+    // TODO: Update stats based on new session
+  };
+
+  const pulseCategories = [
+    { key: 'sleep' as const, label: 'Sleep', icon: Bed },
+    { key: 'mood' as const, label: 'Mood', icon: Heart },
+    { key: 'energy' as const, label: 'Energy', icon: Zap },
+    { key: 'focus' as const, label: 'Focus', icon: Brain },
+  ];
 
   return (
     <div className={`min-h-screen bg-gradient-to-br ${colors.primary} p-4 pb-24 transition-all duration-2000 ease-in-out relative overflow-hidden`}>
-      {/* Enhanced atmospheric layers with painterly textures */}
+      {/* Enhanced atmospheric layers */}
       <div className="absolute inset-0 overflow-hidden">
         <div className={`absolute top-0 left-0 w-full h-full bg-gradient-radial ${colors.atmospheric} opacity-60 animate-breathe`}></div>
         <div className={`absolute top-1/6 left-1/5 w-96 h-64 bg-gradient-to-br ${colors.textured} opacity-50 rounded-full blur-3xl animate-float transform rotate-12`}></div>
@@ -133,150 +224,151 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
 
       <div className="relative z-10 max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-4xl font-bold text-white drop-shadow-2xl mb-2 tracking-wide" style={{
             textShadow: '0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.3)'
           }}>Flow Progress</h1>
           <p className="text-lg text-white/95 drop-shadow-lg tracking-wider">Natural Rhythm Tracking</p>
         </div>
 
-        {/* Main Progress Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Day Streak - Primary Focus */}
-          <div className="md:col-span-1 bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
+        {/* Compact Top Stats Row */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {/* Day Streak */}
+          <div className="bg-white/25 backdrop-blur-md rounded-xl p-4 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
             <div className="relative z-10 text-center">
-              {/* Glowing mandala visualization */}
-              <div className="relative mb-4">
-                <div className={`w-24 h-24 mx-auto rounded-full bg-gradient-to-br ${getProgressColor(mockStats.dayStreak / 30)} ${colors.glow} shadow-2xl animate-breathe flex items-center justify-center relative overflow-hidden`}>
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 rounded-full"></div>
-                  <span className="text-2xl font-bold text-white drop-shadow-lg relative z-10">{mockStats.dayStreak}</span>
-                </div>
-                {/* Orbital rings */}
-                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '20s' }}>
-                  <div className="w-28 h-28 border border-white/30 rounded-full"></div>
-                </div>
+              <div className={`w-16 h-16 mx-auto mb-2 rounded-full bg-gradient-to-br ${getProgressColor(mockStats.dayStreak / 30)} ${colors.glow} shadow-xl animate-breathe flex items-center justify-center`}>
+                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.dayStreak}</span>
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2 drop-shadow-lg">Day Flow</h3>
-              <p className="text-white/90 text-sm">Consecutive days in rhythm</p>
+              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Day Flow</h3>
+              <p className="text-white/90 text-xs">Consecutive days</p>
             </div>
           </div>
 
-          {/* Weekly Flow */}
-          <div className="md:col-span-1 bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
-            <div className="relative z-10">
-              <h3 className="text-lg font-semibold text-white mb-4 drop-shadow-lg text-center">Weekly Rhythm</h3>
-              {/* Flowing wave progress */}
-              <div className="relative mb-4">
-                <div className="h-6 bg-white/20 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full bg-gradient-to-r ${getProgressColor(mockStats.weeklyMinutes / 200)} rounded-full animate-pulse transition-all duration-1000`}
-                    style={{ width: `${Math.min((mockStats.weeklyMinutes / 200) * 100, 100)}%` }}
-                  ></div>
-                </div>
-                <div className="text-center mt-2">
-                  <span className="text-2xl font-bold text-white drop-shadow-lg">{mockStats.weeklyMinutes}</span>
-                  <span className="text-white/90 text-sm ml-1">minutes</span>
-                </div>
+          {/* Weekly Minutes */}
+          <div className="bg-white/25 backdrop-blur-md rounded-xl p-4 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
+            <div className="relative z-10 text-center">
+              <div className="mb-2">
+                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.weeklyMinutes}</span>
+                <span className="text-white/90 text-xs ml-1">min</span>
+              </div>
+              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Weekly</h3>
+              <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full bg-gradient-to-r ${getProgressColor(mockStats.weeklyMinutes / 200)} rounded-full animate-pulse`}
+                  style={{ width: `${Math.min((mockStats.weeklyMinutes / 200) * 100, 100)}%` }}
+                ></div>
               </div>
             </div>
           </div>
 
-          {/* Prime Window Balance */}
-          <div className="md:col-span-1 bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
-            <div className="relative z-10">
-              <h3 className="text-lg font-semibold text-white mb-4 drop-shadow-lg text-center">Light Harmony</h3>
-              {/* Sunrise/Sunset Balance */}
-              <div className="flex justify-center items-center mb-4">
-                <div className="flex items-center space-x-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-white/90 mt-1">Morning</span>
-                  </div>
-                  <div className="text-white/60">~</div>
-                  <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse delay-500"></div>
-                    <span className="text-xs text-white/90 mt-1">Evening</span>
-                  </div>
-                </div>
+          {/* Prime Minutes */}
+          <div className="bg-white/25 backdrop-blur-md rounded-xl p-4 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
+            <div className="relative z-10 text-center">
+              <div className="flex justify-center items-center mb-2 space-x-2">
+                <div className="w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-pulse"></div>
+                <div className="w-4 h-4 bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse delay-500"></div>
               </div>
-              <div className="text-center">
-                <span className="text-2xl font-bold text-white drop-shadow-lg">{mockStats.primeMinutes}</span>
-                <span className="text-white/90 text-sm ml-1">prime minutes</span>
+              <div className="mb-1">
+                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.primeMinutes}</span>
+                <span className="text-white/90 text-xs ml-1">min</span>
               </div>
+              <h3 className="text-sm font-semibold text-white drop-shadow-lg">Prime Light</h3>
             </div>
           </div>
         </div>
 
         {/* Add Session Button */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <button
-            onClick={() => setShowAddSession(!showAddSession)}
-            className={`px-8 py-4 rounded-full ${colors.accent} ${colors.glow} shadow-2xl text-white font-semibold text-lg tracking-wide hover:scale-105 transform transition-all duration-500 active:scale-95 relative overflow-hidden border-2 border-white/30`}
+            onClick={() => setShowAddSession(true)}
+            className={`px-6 py-3 rounded-full ${colors.accent} ${colors.glow} shadow-2xl text-white font-semibold tracking-wide hover:scale-105 transform transition-all duration-500 relative overflow-hidden border-2 border-white/30`}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-transparent to-white/20 rounded-full"></div>
-            <span className="relative z-10 drop-shadow-lg flex items-center space-x-3">
-              <Plus className="w-5 h-5" />
+            <span className="relative z-10 drop-shadow-lg flex items-center space-x-2">
+              <Plus className="w-4 h-4" />
               <span>Add Session</span>
             </span>
           </button>
         </div>
 
-        {/* Daily Check-in */}
+        {/* The Pulse: Inner Rhythms Check-in */}
         <div className="mb-8 bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
           <div className="relative z-10">
-            <h3 className="text-xl font-semibold text-white mb-4 drop-shadow-lg text-center">Today's Flow Check-in</h3>
-            <div className="flex justify-center space-x-4 flex-wrap">
-              {moodEmojis.map((emoji, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedMood(index + 1)}
-                  className={`p-3 rounded-full transition-all duration-300 ${
-                    selectedMood === index + 1
-                      ? `bg-white/30 ${colors.glow} shadow-lg scale-110`
-                      : 'bg-white/15 hover:bg-white/25 hover:scale-105'
-                  }`}
-                >
-                  <span className="text-2xl">{emoji}</span>
-                </button>
-              ))}
+            <h3 className="text-xl font-semibold text-white mb-2 drop-shadow-lg text-center">The Pulse</h3>
+            <p className="text-white/90 text-center mb-4 text-sm">Checking your inner rhythms</p>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {pulseCategories.map((category) => {
+                const IconComponent = category.icon;
+                const score = selectedScores[category.key];
+                
+                return (
+                  <div key={category.key} className="text-center">
+                    <div className="mb-2">
+                      <IconComponent className="w-6 h-6 text-white/90 mx-auto mb-1" />
+                      <h4 className="text-white/90 text-sm font-medium">{category.label}</h4>
+                    </div>
+                    <div className="flex justify-center space-x-1">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                        <button
+                          key={num}
+                          onClick={() => setSelectedScores(prev => ({ ...prev, [category.key]: num }))}
+                          className={`w-6 h-6 rounded-full text-xs font-bold transition-all duration-200 ${
+                            score === num
+                              ? 'bg-white text-black scale-110'
+                              : 'bg-white/20 text-white/70 hover:bg-white/30'
+                          }`}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <p className="text-center text-white/90 mt-2 text-sm">
-              {moodLabels[selectedMood - 1]}
-            </p>
           </div>
         </div>
 
-        {/* Natural Rhythm Invitations */}
+        {/* Circadian Health Benefits */}
         <div className="mb-8">
-          <h3 className="text-2xl font-semibold text-white mb-6 drop-shadow-lg text-center tracking-wide">Natural Rhythm Invitations</h3>
+          <h3 className="text-2xl font-semibold text-white mb-6 drop-shadow-lg text-center tracking-wide">Circadian Health Benefits</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockStats.naturalRhythms.map((rhythm) => {
-              const progress = rhythm.currentDays / rhythm.requiredDays;
-              const styles = getStateStyles(rhythm.state, progress);
+            {mockStats.circadianBenefits.map((benefit) => {
+              const progress = benefit.currentDays / benefit.requiredDays;
+              const styles = getStateStyles(benefit.state, progress);
+              const isExpanded = expandedBenefit === benefit.id;
               
               return (
                 <div
-                  key={rhythm.id}
-                  className={`${styles.bg} backdrop-blur-md rounded-xl p-4 border ${styles.glow} shadow-xl ${styles.animation} relative overflow-hidden`}
+                  key={benefit.id}
+                  className={`${styles.bg} backdrop-blur-md rounded-xl p-4 border ${styles.glow} shadow-xl ${styles.animation} relative overflow-hidden cursor-pointer transition-all duration-300`}
+                  onClick={() => setExpandedBenefit(isExpanded ? null : benefit.id)}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
                   <div className="relative z-10">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h4 className={`font-semibold ${styles.text} drop-shadow text-sm`}>{rhythm.name}</h4>
-                        <p className={`${styles.text} opacity-80 text-xs`}>{rhythm.description}</p>
+                        <h4 className={`font-semibold ${styles.text} drop-shadow text-sm`}>{benefit.name}</h4>
+                        <p className={`${styles.text} opacity-80 text-xs`}>{benefit.description}</p>
                       </div>
                       <span className="text-xs px-2 py-1 bg-white/20 rounded-full text-white/90">
                         {styles.status}
                       </span>
                     </div>
                     
-                    {/* Organic progress visualization */}
-                    <div className="relative mb-2">
+                    <div className="mb-2">
+                      <p className="text-white/90 text-xs mb-2">{benefit.shortTip}</p>
+                      {isExpanded && (
+                        <p className="text-white/80 text-xs italic">{benefit.evidence}</p>
+                      )}
+                    </div>
+                    
+                    <div className="relative">
                       <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                         <div 
                           className={`h-full bg-gradient-to-r ${getProgressColor(progress)} rounded-full transition-all duration-1000 animate-pulse`}
@@ -284,8 +376,8 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
                         ></div>
                       </div>
                       <div className="flex justify-between text-xs text-white/80 mt-1">
-                        <span>{rhythm.currentDays} days</span>
-                        <span>{rhythm.requiredDays} needed</span>
+                        <span>{benefit.currentDays} days</span>
+                        <span>{benefit.requiredDays} needed</span>
                       </div>
                     </div>
                   </div>
@@ -295,6 +387,13 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
           </div>
         </div>
       </div>
+
+      <AddSessionModal
+        isOpen={showAddSession}
+        onClose={() => setShowAddSession(false)}
+        onSave={handleAddSession}
+        currentTime={currentTime}
+      />
     </div>
   );
 };

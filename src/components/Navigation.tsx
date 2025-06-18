@@ -11,7 +11,7 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, currentTime }) => {
   const hours = currentTime.getHours();
   
-  // Enhanced painterly color palette based on time
+  // Enhanced painterly color palette based on time (for non-home tabs)
   const getTimeColors = () => {
     if (hours >= 5 && hours < 8) {
       return {
@@ -45,6 +45,7 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, current
   };
 
   const colors = getTimeColors();
+  const isHome = activeTab === 'home';
 
   const tabs = [
     { id: 'home' as const, icon: Home, label: 'Home' },
@@ -54,13 +55,19 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, current
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
-      <div className={`bg-gradient-to-r ${colors.accent} backdrop-blur-md border-t border-white/20 ${colors.glow} shadow-2xl relative overflow-hidden`}>
-        {/* Atmospheric background */}
-        <div className={`absolute inset-0 bg-gradient-to-r ${colors.atmospheric} opacity-60 animate-breathe`}></div>
-        
-        {/* Paint stroke effects */}
-        <div className={`absolute top-0 left-1/4 w-32 h-8 bg-gradient-to-r ${colors.primary} opacity-30 rounded-full blur-sm animate-float`}></div>
-        <div className={`absolute top-0 right-1/4 w-24 h-6 bg-gradient-to-l ${colors.primary} opacity-25 rounded-full blur-md animate-float delay-1000`}></div>
+      <div className={`${
+        isHome 
+          ? 'bg-transparent' 
+          : `bg-gradient-to-r ${colors.accent} backdrop-blur-md border-t border-white/20 ${colors.glow} shadow-2xl`
+      } relative overflow-hidden`}>
+        {/* Atmospheric background only for non-home tabs */}
+        {!isHome && (
+          <>
+            <div className={`absolute inset-0 bg-gradient-to-r ${colors.atmospheric} opacity-60`}></div>
+            <div className={`absolute top-0 left-1/4 w-32 h-8 bg-gradient-to-r ${colors.primary} opacity-30 rounded-full blur-sm animate-float`}></div>
+            <div className={`absolute top-0 right-1/4 w-24 h-6 bg-gradient-to-l ${colors.primary} opacity-25 rounded-full blur-md animate-float delay-1000`}></div>
+          </>
+        )}
         
         <div className="flex justify-around items-center py-2 relative z-10">
           {tabs.map((tab) => {
@@ -72,29 +79,29 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange, current
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 className={`flex flex-col items-center py-2 px-4 rounded-xl transition-all duration-500 relative overflow-hidden ${
-                  isActive 
-                    ? `bg-white/25 ${colors.glow} shadow-lg animate-breathe` 
-                    : 'hover:bg-white/15'
+                  isHome 
+                    ? (isActive ? 'bg-gray-800/40' : 'hover:bg-gray-800/20')
+                    : (isActive ? `bg-white/25 ${colors.glow} shadow-lg` : 'hover:bg-white/15')
                 }`}
               >
-                {/* Active indicator glow */}
-                {isActive && (
+                {/* Active indicator glow - only for non-home */}
+                {isActive && !isHome && (
                   <div className={`absolute inset-0 bg-gradient-to-br ${colors.primary} opacity-30 rounded-xl blur-sm animate-pulse`}></div>
                 )}
                 
                 <div className="relative z-10 flex flex-col items-center">
                   <IconComponent 
-                    className={`w-6 h-6 transition-all duration-300 ${
-                      isActive 
-                        ? 'text-white drop-shadow-lg scale-110' 
-                        : 'text-white/80'
+                    className={`w-5 h-5 transition-all duration-300 ${
+                      isHome
+                        ? (isActive ? 'text-gray-400' : 'text-gray-600')
+                        : (isActive ? 'text-white drop-shadow-lg scale-110' : 'text-white/80')
                     }`} 
                   />
                   <span 
                     className={`text-xs mt-1 font-medium tracking-wide transition-all duration-300 ${
-                      isActive 
-                        ? 'text-white drop-shadow-lg' 
-                        : 'text-white/80'
+                      isHome
+                        ? (isActive ? 'text-gray-400' : 'text-gray-600')
+                        : (isActive ? 'text-white drop-shadow-lg' : 'text-white/80')
                     }`}
                   >
                     {tab.label}
