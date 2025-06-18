@@ -114,7 +114,7 @@ const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
   const isPrimeTime = isInPrimeWindow;
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${colors.primary} p-4 pb-20 transition-all duration-2000 ease-in-out relative overflow-hidden`}>
+    <div className={`min-h-screen bg-gradient-to-br ${colors.primary} p-4 transition-all duration-2000 ease-in-out relative overflow-hidden`}>
       {/* Enhanced atmospheric layers with painterly textures */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Primary atmospheric layer */}
