@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface AboutPageProps {
@@ -52,12 +53,58 @@ const AboutPage: React.FC<AboutPageProps> = ({ currentTime }) => {
       </div>
 
       <div className="relative z-10 max-w-2xl mx-auto text-center">
-        {/* Simple Header */}
+        {/* Header */}
         <div className="mb-12">
           <h1 className="text-6xl font-bold text-white drop-shadow-2xl mb-4 tracking-wide" style={{
             textShadow: '0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.3)'
           }}>SolCue</h1>
-          <p className="text-xl text-white/95 drop-shadow-lg tracking-wider">Developer: Damian Ewens</p>
+          <p className="text-xl text-white/95 drop-shadow-lg tracking-wider mb-8">Circadian Light Tracker</p>
+          <p className="text-lg text-white/90 drop-shadow-lg tracking-wider">Developer: Damian Ewens</p>
+        </div>
+
+        {/* Content sections */}
+        <div className="space-y-8 text-left">
+          {/* Ocean State of Mind */}
+          <div className="bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
+            <div className="relative z-10">
+              <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow-lg">Ocean State of Mind</h2>
+              <p className="text-white/90 leading-relaxed">
+                SolCue embodies the philosophy that the most powerful medicine is nature itself. By aligning with natural light cycles, 
+                we tap into our body's ancient wisdom and flow with the rhythms that have guided life for millions of years.
+              </p>
+            </div>
+          </div>
+
+          {/* Circadian Science */}
+          <div className="bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
+            <div className="relative z-10">
+              <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow-lg">The Science of Light</h2>
+              <p className="text-white/90 leading-relaxed mb-4">
+                Light is the primary cue that synchronizes our circadian rhythms. Morning light exposure helps regulate:
+              </p>
+              <ul className="text-white/90 space-y-2 ml-4">
+                <li>• Sleep-wake cycles and melatonin production</li>
+                <li>• Hormone balance including cortisol and growth hormone</li>
+                <li>• Metabolism and digestive rhythms</li>
+                <li>• Mood regulation through serotonin pathways</li>
+                <li>• Immune function and cellular repair</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Company Info */}
+          <div className="bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
+            <div className="relative z-10">
+              <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow-lg">About the App</h2>
+              <p className="text-white/90 leading-relaxed">
+                Created with love to help people reconnect with natural rhythms in our modern world. 
+                SolCue makes it simple to track light exposure and experience the profound benefits of circadian alignment.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

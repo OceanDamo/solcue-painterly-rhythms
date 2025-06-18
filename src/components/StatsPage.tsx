@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Sun, Moon, Heart, Zap, Brain, Bed } from 'lucide-react';
+import { Plus, Bed, Heart, Zap, Brain } from 'lucide-react';
 import AddSessionModal from './AddSessionModal';
 
 interface StatsPageProps {
@@ -169,7 +169,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
         return {
           bg: 'bg-white/15 border-white/30',
           glow: '',
-          animation: 'animate-breathe',
+          animation: '',
           text: 'text-white/90',
           status: '🌅 Open'
         };
@@ -177,7 +177,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
         return {
           bg: `bg-gradient-to-br ${colors.textured} border-yellow-300/40`,
           glow: colors.glow,
-          animation: 'animate-pulse',
+          animation: '',
           text: 'text-white',
           status: '🌊 Flowing'
         };
@@ -185,7 +185,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
         return {
           bg: `bg-gradient-to-br ${colors.accent} border-white/50`,
           glow: `${colors.glow} shadow-2xl`,
-          animation: 'animate-breathe',
+          animation: '',
           text: 'text-white',
           status: '✨ Harmony'
         };
@@ -227,8 +227,8 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
         <div className="text-center mb-6">
           <h1 className="text-4xl font-bold text-white drop-shadow-2xl mb-2 tracking-wide" style={{
             textShadow: '0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.3)'
-          }}>Flow Progress</h1>
-          <p className="text-lg text-white/95 drop-shadow-lg tracking-wider">Natural Rhythm Tracking</p>
+          }}>The Pulse</h1>
+          <p className="text-lg text-white/95 drop-shadow-lg tracking-wider">Circadian Health Tracking</p>
         </div>
 
         {/* Compact Top Stats Row */}
@@ -237,15 +237,28 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
           <div className="bg-white/25 backdrop-blur-md rounded-xl p-4 border-2 border-white/40 shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
             <div className="relative z-10 text-center">
-              <div className={`w-16 h-16 mx-auto mb-2 rounded-full bg-gradient-to-br ${getProgressColor(mockStats.dayStreak / 30)} ${colors.glow} shadow-xl animate-breathe flex items-center justify-center`}>
+              <div className={`w-16 h-16 mx-auto mb-2 rounded-full bg-gradient-to-br ${getProgressColor(mockStats.dayStreak / 30)} ${colors.glow} shadow-xl flex items-center justify-center`}>
                 <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.dayStreak}</span>
               </div>
               <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Day Flow</h3>
-              <p className="text-white/90 text-xs">Consecutive days</p>
+              <p className="text-white/90 text-xs">Consecutive days with 10 mins outside</p>
             </div>
           </div>
 
-          {/* Weekly Minutes */}
+          {/* Total Prime Light Today */}
+          <div className="bg-white/25 backdrop-blur-md rounded-xl p-4 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
+            <div className="relative z-10 text-center">
+              <div className="mb-2">
+                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.primeMinutes}</span>
+                <span className="text-white/90 text-xs ml-1">min</span>
+              </div>
+              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Today</h3>
+              <p className="text-white/90 text-xs">Total Prime Light Today</p>
+            </div>
+          </div>
+
+          {/* Total Prime Light This Week */}
           <div className="bg-white/25 backdrop-blur-md rounded-xl p-4 border-2 border-white/40 shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
             <div className="relative z-10 text-center">
@@ -253,29 +266,8 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
                 <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.weeklyMinutes}</span>
                 <span className="text-white/90 text-xs ml-1">min</span>
               </div>
-              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Weekly</h3>
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full bg-gradient-to-r ${getProgressColor(mockStats.weeklyMinutes / 200)} rounded-full animate-pulse`}
-                  style={{ width: `${Math.min((mockStats.weeklyMinutes / 200) * 100, 100)}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Prime Minutes */}
-          <div className="bg-white/25 backdrop-blur-md rounded-xl p-4 border-2 border-white/40 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
-            <div className="relative z-10 text-center">
-              <div className="flex justify-center items-center mb-2 space-x-2">
-                <div className="w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full animate-pulse"></div>
-                <div className="w-4 h-4 bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse delay-500"></div>
-              </div>
-              <div className="mb-1">
-                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.primeMinutes}</span>
-                <span className="text-white/90 text-xs ml-1">min</span>
-              </div>
-              <h3 className="text-sm font-semibold text-white drop-shadow-lg">Prime Light</h3>
+              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">This Week</h3>
+              <p className="text-white/90 text-xs">Total Prime Light This Week</p>
             </div>
           </div>
         </div>
@@ -346,7 +338,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
               return (
                 <div
                   key={benefit.id}
-                  className={`${styles.bg} backdrop-blur-md rounded-xl p-4 border ${styles.glow} shadow-xl ${styles.animation} relative overflow-hidden cursor-pointer transition-all duration-300`}
+                  className={`${styles.bg} backdrop-blur-md rounded-xl p-4 border ${styles.glow} shadow-xl relative overflow-hidden cursor-pointer transition-all duration-300 hover:scale-105`}
                   onClick={() => setExpandedBenefit(isExpanded ? null : benefit.id)}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-xl"></div>
@@ -371,7 +363,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
                     <div className="relative">
                       <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full bg-gradient-to-r ${getProgressColor(progress)} rounded-full transition-all duration-1000 animate-pulse`}
+                          className={`h-full bg-gradient-to-r ${getProgressColor(progress)} rounded-full transition-all duration-1000`}
                           style={{ width: `${Math.min(progress * 100, 100)}%` }}
                         ></div>
                       </div>
