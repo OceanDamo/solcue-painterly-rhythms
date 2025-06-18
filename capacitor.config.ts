@@ -2,7 +2,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.OceanDamo.solcue',
+  appId: 'com.oceandamo.SolCue', // Fixed to match original
   appName: 'SolCue',
   webDir: 'dist',
   // Remove server config for production builds
@@ -12,7 +12,9 @@ const config: CapacitorConfig = {
   // },
   bundledWebRuntime: false,
   ios: {
-    path: 'ios/App'
+    path: 'ios/App',
+    supportsTablet: false, // iPhone only like original
+    requireFullScreen: true
   },
   plugins: {
     CapacitorHttp: {
