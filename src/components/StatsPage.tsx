@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Bed, Heart, Zap, Brain } from 'lucide-react';
 import AddSessionModal from './AddSessionModal';
@@ -15,6 +14,7 @@ const mockStats = {
   primeMinutesYesterday: 32,
   weeklyMinutesLastWeek: 98,
   pulseScores: { sleep: 6, mood: 7, energy: 5, focus: 6 },
+  pulseScoresYesterday: { sleep: 5, mood: 6, energy: 4, focus: 7 }, // Yesterday's scores
   lastSessionDate: new Date(),
   circadianBenefits: [
     { 
@@ -328,12 +328,28 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
             
             {/* Pulse Data Display */}
             <div className="mt-4 pt-4 border-t border-white/10">
-              <p className="text-white/70 text-xs text-center">Your SolCue Pulse Data</p>
-              <div className="flex justify-center space-x-4 mt-2 text-xs text-white/80">
-                <span>Sleep: {selectedScores.sleep}</span>
-                <span>Mood: {selectedScores.mood}</span>
-                <span>Energy: {selectedScores.energy}</span>
-                <span>Focus: {selectedScores.focus}</span>
+              <p className="text-white/70 text-xs text-center mb-2">Your SolCue Pulse Data</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                {/* Today's Data */}
+                <div>
+                  <p className="text-white/80 font-medium mb-1 text-center">Today</p>
+                  <div className="flex justify-center space-x-3">
+                    <span className="text-white/80">Sleep: {selectedScores.sleep}</span>
+                    <span className="text-white/80">Mood: {selectedScores.mood}</span>
+                    <span className="text-white/80">Energy: {selectedScores.energy}</span>
+                    <span className="text-white/80">Focus: {selectedScores.focus}</span>
+                  </div>
+                </div>
+                {/* Yesterday's Data */}
+                <div>
+                  <p className="text-white/60 font-medium mb-1 text-center">Yesterday</p>
+                  <div className="flex justify-center space-x-3">
+                    <span className="text-white/60">Sleep: {mockStats.pulseScoresYesterday.sleep || '—'}</span>
+                    <span className="text-white/60">Mood: {mockStats.pulseScoresYesterday.mood || '—'}</span>
+                    <span className="text-white/60">Energy: {mockStats.pulseScoresYesterday.energy || '—'}</span>
+                    <span className="text-white/60">Focus: {mockStats.pulseScoresYesterday.focus || '—'}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
