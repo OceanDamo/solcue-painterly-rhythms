@@ -5,10 +5,11 @@ const config: CapacitorConfig = {
   appId: 'com.OceanDamo.solcue',
   appName: 'SolCue',
   webDir: 'dist',
-  server: {
-    url: 'https://a34cb0d7-5f9b-47cd-a9e6-d2923619dfd4.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  },
+  // Remove server config for production builds
+  // server: {
+  //   url: 'https://a34cb0d7-5f9b-47cd-a9e6-d2923619dfd4.lovableproject.com?forceHideBadge=true',
+  //   cleartext: true
+  // },
   bundledWebRuntime: false,
   ios: {
     path: 'ios/App'
