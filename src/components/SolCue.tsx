@@ -1,6 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Clock } from 'lucide-react';
+import { Sun, Moon, MapPin, Play, Square } from 'lucide-react';
+import { useLocation } from '@/hooks/useLocation';
+import { useSessionTracking } from '@/hooks/useSessionTracking';
 
 interface SolCueProps {
   currentTime?: Date;
@@ -9,6 +10,10 @@ interface SolCueProps {
 const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
   const [time, setTime] = useState(currentTime);
   const [isInPrimeWindow, setIsInPrimeWindow] = useState(false);
+  
+  // Location and session hooks
+  const { location, loading: locationLoading, error: locationError, hasPermission, requestPermission, getCurrentLocation } = useLocation();
+  const { currentSession, startSession, endSession, getWeeklyMinutes, getCurrentStreak } = useSessionTracking();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -40,6 +45,25 @@ const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
   useEffect(() => {
     setIsInPrimeWindow(currentlyInPrime);
   }, [currentlyInPrime]);
+
+  const handleSessionAction = async () => {
+    if (currentSession) {
+      // End current session
+      endSession();
+    } else {
+      // Start new session
+      let currentLocation = location;
+      
+      if (!currentLocation && hasPermission) {
+        currentLocation = await getCurrentLocation();
+      } else if (!hasPermission) {
+        await requestPermission();
+      }
+      
+      const sessionType = inMorningPrime ? 'morning' : inEveningPrime ? 'evening' : 'manual';
+      startSession(sessionType, currentLocation || undefined);
+    }
+  };
 
   // Enhanced painterly color palette based on time
   const getTimeColors = () => {
@@ -124,6 +148,30 @@ const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
 
         {/* Main Clock Container with enhanced painterly effects */}
         <div className="flex flex-col items-center">
+          {/* Location Status */}
+          {!locationLoading && (
+            <div className="mb-4 flex items-center space-x-2 text-white/90">
+              <MapPin className="w-4 h-4" />
+              <span className="text-sm">
+                {location ? `${location.latitude.toFixed(2)}, ${location.longitude.toFixed(2)}` : 
+                 locationError ? 'Location unavailable' : 'Location not set'}
+              </span>
+            </div>
+          )}
+
+          {/* Session Status */}
+          {currentSession && (
+            <div className="mb-6 px-6 py-3 rounded-full bg-green-500/80 backdrop-blur-sm border border-white/30 shadow-xl">
+              <div className="flex items-center space-x-3 text-white">
+                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                <span className="font-medium">Session Active</span>
+                <span className="text-sm opacity-90">
+                  Started: {currentSession.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Prime Time Status with enhanced styling */}
           {isPrimeTime && (
             <div className={`mb-8 px-10 py-5 rounded-full ${colors.accent} ${colors.glow} shadow-2xl animate-breathe relative overflow-hidden`}>
@@ -250,31 +298,43 @@ const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
             </div>
           </div>
 
-          {/* Enhanced Action Button */}
+          {/* Enhanced Action Button with Session Control */}
           <div className="mt-10">
-            <button className={`px-16 py-5 rounded-full ${colors.accent} ${colors.glow} shadow-2xl text-white font-semibold text-xl tracking-wide hover:scale-105 transform transition-all duration-500 active:scale-95 relative overflow-hidden border-2 border-white/30`}>
-              {/* Button inner glow */}
+            <button 
+              onClick={handleSessionAction}
+              className={`px-16 py-5 rounded-full ${colors.accent} ${colors.glow} shadow-2xl text-white font-semibold text-xl tracking-wide hover:scale-105 transform transition-all duration-500 active:scale-95 relative overflow-hidden border-2 border-white/30`}
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-transparent to-white/20 rounded-full"></div>
-              <span className="relative z-10 drop-shadow-lg">
-                {isPrimeTime ? 'Start Session' : 'Add Manual Session'}
+              <span className="relative z-10 drop-shadow-lg flex items-center space-x-3">
+                {currentSession ? (
+                  <>
+                    <Square className="w-6 h-6" />
+                    <span>End Session</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-6 h-6" />
+                    <span>{isPrimeTime ? 'Start Session' : 'Add Manual Session'}</span>
+                  </>
+                )}
               </span>
             </button>
           </div>
         </div>
 
-        {/* Enhanced Stats Preview */}
+        {/* Enhanced Stats Preview with Real Data */}
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-white/25 backdrop-blur-md rounded-2xl p-8 border-2 border-white/40 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
             <div className="relative z-10">
-              <div className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">7</div>
+              <div className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">{getCurrentStreak()}</div>
               <div className="text-white/95 tracking-wide">Day Streak</div>
             </div>
           </div>
           <div className="bg-white/25 backdrop-blur-md rounded-2xl p-8 border-2 border-white/40 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
             <div className="relative z-10">
-              <div className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">142</div>
+              <div className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">{getWeeklyMinutes()}</div>
               <div className="text-white/95 tracking-wide">Minutes This Week</div>
             </div>
           </div>

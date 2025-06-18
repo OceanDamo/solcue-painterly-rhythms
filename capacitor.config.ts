@@ -2,7 +2,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.oceandamo.SolCue', // Fixed to match original
+  appId: '**oceandamo.SolCue', // Fixed to match original
   appName: 'SolCue',
   webDir: 'dist',
   // Remove server config for production builds
@@ -19,6 +19,9 @@ const config: CapacitorConfig = {
   plugins: {
     CapacitorHttp: {
       enabled: true
+    },
+    Geolocation: {
+      permissions: ['location']
     }
   }
 };
