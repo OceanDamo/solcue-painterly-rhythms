@@ -12,6 +12,8 @@ const mockStats = {
   dayStreak: 7,
   weeklyMinutes: 142,
   primeMinutes: 89,
+  primeMinutesYesterday: 32,
+  weeklyMinutesLastWeek: 98,
   pulseScores: { sleep: 6, mood: 7, energy: 5, focus: 6 },
   lastSessionDate: new Date(),
   circadianBenefits: [
@@ -217,10 +219,10 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
     <div className={`min-h-screen bg-gradient-to-br ${colors.primary} p-4 pb-24 transition-all duration-2000 ease-in-out relative overflow-hidden`}>
       {/* Enhanced atmospheric layers with darker tones */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className={`absolute top-0 left-0 w-full h-full bg-gradient-radial ${colors.atmospheric} opacity-30 animate-breathe`}></div>
-        <div className={`absolute top-1/6 left-1/5 w-96 h-64 bg-gradient-to-br ${colors.textured} opacity-25 rounded-full blur-3xl animate-float transform rotate-12`}></div>
-        <div className={`absolute bottom-1/4 right-1/6 w-80 h-96 bg-gradient-to-tl ${colors.textured} opacity-20 rounded-full blur-2xl animate-float delay-500 transform -rotate-12`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-radial ${colors.secondary} opacity-15 rounded-full blur-xl animate-pulse delay-1000`}></div>
+        <div className={`absolute top-0 left-0 w-full h-full bg-gradient-radial ${colors.atmospheric} opacity-20 animate-breathe`}></div>
+        <div className={`absolute top-1/6 left-1/5 w-96 h-64 bg-gradient-to-br ${colors.textured} opacity-15 rounded-full blur-3xl animate-float transform rotate-12`}></div>
+        <div className={`absolute bottom-1/4 right-1/6 w-80 h-96 bg-gradient-to-tl ${colors.textured} opacity-12 rounded-full blur-2xl animate-float delay-500 transform -rotate-12`}></div>
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-radial ${colors.secondary} opacity-10 rounded-full blur-xl animate-pulse delay-1000`}></div>
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto">
@@ -255,6 +257,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
                 <span className="text-white/90 text-xs ml-1">min</span>
               </div>
               <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Total Prime Light Today</h3>
+              <p className="text-white/70 text-xs">{mockStats.primeMinutesYesterday} min Yesterday</p>
             </div>
           </div>
 
@@ -267,6 +270,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
                 <span className="text-white/90 text-xs ml-1">min</span>
               </div>
               <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Total Prime Light This Week</h3>
+              <p className="text-white/70 text-xs">{mockStats.weeklyMinutesLastWeek} min Last Week</p>
             </div>
           </div>
         </div>
@@ -285,7 +289,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
           </button>
         </div>
 
-        {/* The Pulse: Inner Rhythms Check-in */}
+        {/* Checking Your Inner Rhythms */}
         <div className="mb-8 bg-black/60 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
           <div className="relative z-10">
