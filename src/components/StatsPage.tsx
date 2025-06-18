@@ -1,19 +1,43 @@
-
 import React, { useState } from 'react';
-import { Plus, Bed, Heart, Zap, Brain } from 'lucide-react';
+import { Plus, Bed, Heart, Zap, Brain, TrendingUp, TrendingDown } from 'lucide-react';
 import AddSessionModal from './AddSessionModal';
 
 interface StatsPageProps {
   currentTime: Date;
 }
 
-// Mock data - in real app this would come from hooks/storage
-const mockStats = {
+// Mock aggregated data - in real app this would come from hooks/storage with proper calculations
+const mockAggregatedData = {
   dayStreak: 7,
   weeklyMinutes: 142,
   primeMinutes: 89,
+  
+  // Today vs Yesterday comparisons
+  todayVsYesterday: {
+    dayStreak: { current: 7, change: +1, trend: 'up' as const },
+    primeMinutesToday: { current: 89, change: +15, trend: 'up' as const },
+    weeklyMinutes: { current: 142, change: +23, trend: 'up' as const }
+  },
+  
+  // Rolling averages (7-day)
+  rollingAverages: {
+    mood: { current: 6.8, weekChange: +0.7, trend: 'up' as const },
+    sleep: { current: 7.2, weekChange: +0.4, trend: 'up' as const },
+    energy: { current: 6.5, weekChange: +1.1, trend: 'up' as const },
+    focus: { current: 6.9, weekChange: +0.3, trend: 'up' as const }
+  },
+  
+  // Behavioral correlations
+  correlations: {
+    moodOnStreakDays: { improvement: 12, sample: 'Mood up 12% on streak days' },
+    energyWithMorningLight: { improvement: 18, sample: 'Energy up 18% with AM light' },
+    sleepWithConsistentLight: { improvement: 15, sample: 'Sleep up 15% with consistent light' }
+  },
+  
+  // Current pulse scores
   pulseScores: { sleep: 6, mood: 7, energy: 5, focus: 6 },
   lastSessionDate: new Date(),
+  
   circadianBenefits: [
     { 
       id: 1, 
@@ -110,7 +134,7 @@ const mockStats = {
 
 const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
   const [showAddSession, setShowAddSession] = useState(false);
-  const [selectedScores, setSelectedScores] = useState(mockStats.pulseScores);
+  const [selectedScores, setSelectedScores] = useState(mockAggregatedData.pulseScores);
   const [expandedBenefit, setExpandedBenefit] = useState<number | null>(null);
 
   const hours = currentTime.getHours();
@@ -201,6 +225,28 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
     }
   };
 
+  const getTrendIcon = (trend: 'up' | 'down' | 'neutral') => {
+    switch (trend) {
+      case 'up':
+        return <TrendingUp className="w-3 h-3 text-green-400" />;
+      case 'down':
+        return <TrendingDown className="w-3 h-3 text-red-400" />;
+      default:
+        return null;
+    }
+  };
+
+  const formatChange = (change: number, trend: 'up' | 'down' | 'neutral') => {
+    const sign = change > 0 ? '+' : '';
+    const color = trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-white/70';
+    return (
+      <span className={`text-xs ${color} flex items-center space-x-1`}>
+        {getTrendIcon(trend)}
+        <span>({sign}{change})</span>
+      </span>
+    );
+  };
+
   const handleAddSession = (session: { date: string; time: string; duration: number }) => {
     console.log('Adding session:', session);
     // TODO: Update stats based on new session
@@ -232,17 +278,18 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
           <p className="text-lg text-white/95 drop-shadow-lg tracking-wider">Circadian Health Tracking</p>
         </div>
 
-        {/* Compact Top Stats Row */}
+        {/* Enhanced Top Stats Row with Today vs Yesterday */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           {/* Day Streak */}
           <div className="bg-black/60 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-xl"></div>
             <div className="relative z-10 text-center">
-              <div className={`w-16 h-16 mx-auto mb-2 rounded-full bg-gradient-to-br ${getProgressColor(mockStats.dayStreak / 30)} ${colors.glow} shadow-xl flex items-center justify-center`}>
-                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.dayStreak}</span>
+              <div className={`w-16 h-16 mx-auto mb-2 rounded-full bg-gradient-to-br ${getProgressColor(mockAggregatedData.dayStreak / 30)} ${colors.glow} shadow-xl flex items-center justify-center`}>
+                <span className="text-xl font-bold text-white drop-shadow-lg">{mockAggregatedData.todayVsYesterday.dayStreak.current}</span>
               </div>
               <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Day Flow</h3>
-              <p className="text-white/90 text-xs">Consecutive days with 10 mins outside</p>
+              <p className="text-white/90 text-xs mb-1">Consecutive days with 10 mins outside</p>
+              {formatChange(mockAggregatedData.todayVsYesterday.dayStreak.change, mockAggregatedData.todayVsYesterday.dayStreak.trend)}
             </div>
           </div>
 
@@ -251,10 +298,11 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-xl"></div>
             <div className="relative z-10 text-center">
               <div className="mb-2">
-                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.primeMinutes}</span>
+                <span className="text-xl font-bold text-white drop-shadow-lg">{mockAggregatedData.todayVsYesterday.primeMinutesToday.current}</span>
                 <span className="text-white/90 text-xs ml-1">min</span>
               </div>
               <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Total Prime Light Today</h3>
+              {formatChange(mockAggregatedData.todayVsYesterday.primeMinutesToday.change, mockAggregatedData.todayVsYesterday.primeMinutesToday.trend)}
             </div>
           </div>
 
@@ -263,10 +311,33 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-xl"></div>
             <div className="relative z-10 text-center">
               <div className="mb-2">
-                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.weeklyMinutes}</span>
+                <span className="text-xl font-bold text-white drop-shadow-lg">{mockAggregatedData.todayVsYesterday.weeklyMinutes.current}</span>
                 <span className="text-white/90 text-xs ml-1">min</span>
               </div>
               <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Total Prime Light This Week</h3>
+              {formatChange(mockAggregatedData.todayVsYesterday.weeklyMinutes.change, mockAggregatedData.todayVsYesterday.weeklyMinutes.trend)}
+            </div>
+          </div>
+        </div>
+
+        {/* Behavioral Correlations Section */}
+        <div className="mb-6 bg-black/60 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
+          <div className="relative z-10">
+            <h3 className="text-lg font-semibold text-white mb-3 drop-shadow-lg text-center">Light & Wellness Connection</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
+              <div className="text-sm">
+                <span className="text-green-400 font-semibold">+{mockAggregatedData.correlations.moodOnStreakDays.improvement}%</span>
+                <p className="text-white/80 text-xs">Mood on streak days</p>
+              </div>
+              <div className="text-sm">
+                <span className="text-green-400 font-semibold">+{mockAggregatedData.correlations.energyWithMorningLight.improvement}%</span>
+                <p className="text-white/80 text-xs">Energy with AM light</p>
+              </div>
+              <div className="text-sm">
+                <span className="text-green-400 font-semibold">+{mockAggregatedData.correlations.sleepWithConsistentLight.improvement}%</span>
+                <p className="text-white/80 text-xs">Sleep with consistent light</p>
+              </div>
             </div>
           </div>
         </div>
@@ -285,11 +356,28 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
           </button>
         </div>
 
-        {/* The Pulse: Inner Rhythms Check-in */}
+        {/* Enhanced Pulse Check-in with Rolling Averages */}
         <div className="mb-8 bg-black/60 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-2xl"></div>
           <div className="relative z-10">
-            <h3 className="text-xl font-semibold text-white mb-2 drop-shadow-lg text-center">Checking Your Inner Rhythms</h3>
+            <h3 className="text-xl font-semibold text-white mb-4 drop-shadow-lg text-center">Checking Your Inner Rhythms</h3>
+            
+            {/* Rolling Averages Display */}
+            <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10">
+              <h4 className="text-sm font-medium text-white/90 mb-3 text-center">7-Day Rolling Averages</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {pulseCategories.map((category) => {
+                  const avg = mockAggregatedData.rollingAverages[category.key];
+                  return (
+                    <div key={category.key} className="text-center">
+                      <div className="text-lg font-semibold text-white">{avg.current}</div>
+                      <div className="text-xs text-white/80">{category.label}</div>
+                      {formatChange(avg.weekChange, avg.trend)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               {pulseCategories.map((category) => {
@@ -339,7 +427,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
         <div className="mb-8">
           <h3 className="text-2xl font-semibold text-white mb-6 drop-shadow-lg text-center tracking-wide">Circadian Health Benefits</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockStats.circadianBenefits.map((benefit) => {
+            {mockAggregatedData.circadianBenefits.map((benefit) => {
               const progress = benefit.currentDays / benefit.requiredDays;
               const styles = getStateStyles(benefit.state, progress);
               const isExpanded = expandedBenefit === benefit.id;
