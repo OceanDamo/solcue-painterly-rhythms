@@ -2,7 +2,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: '**oceandamo.SolCue', // Fixed to match original
+  appId: 'com.oceandamo.SolCue', // Fixed bundle ID
   appName: 'SolCue',
   webDir: 'dist',
   // Remove server config for production builds
