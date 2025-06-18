@@ -46,10 +46,10 @@ const AboutPage: React.FC<AboutPageProps> = ({ currentTime }) => {
     <div className={`min-h-screen bg-gradient-to-br ${colors.primary} p-4 pb-24 transition-all duration-2000 ease-in-out relative overflow-hidden`}>
       {/* Enhanced atmospheric layers */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className={`absolute top-0 left-0 w-full h-full bg-gradient-radial ${colors.atmospheric} opacity-60 animate-breathe`}></div>
-        <div className={`absolute top-1/6 left-1/5 w-96 h-64 bg-gradient-to-br ${colors.textured} opacity-50 rounded-full blur-3xl animate-float transform rotate-12`}></div>
-        <div className={`absolute bottom-1/4 right-1/6 w-80 h-96 bg-gradient-to-tl ${colors.textured} opacity-40 rounded-full blur-2xl animate-float delay-500 transform -rotate-12`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-radial ${colors.secondary} opacity-30 rounded-full blur-xl animate-pulse delay-1000`}></div>
+        <div className={`absolute top-0 left-0 w-full h-full bg-gradient-radial ${colors.atmospheric} opacity-40 animate-breathe`}></div>
+        <div className={`absolute top-1/6 left-1/5 w-96 h-64 bg-gradient-to-br ${colors.textured} opacity-30 rounded-full blur-3xl animate-float transform rotate-12`}></div>
+        <div className={`absolute bottom-1/4 right-1/6 w-80 h-96 bg-gradient-to-tl ${colors.textured} opacity-25 rounded-full blur-2xl animate-float delay-500 transform -rotate-12`}></div>
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-gradient-radial ${colors.secondary} opacity-20 rounded-full blur-xl animate-pulse delay-1000`}></div>
       </div>
 
       <div className="relative z-10 max-w-2xl mx-auto text-center">
@@ -59,14 +59,23 @@ const AboutPage: React.FC<AboutPageProps> = ({ currentTime }) => {
             textShadow: '0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.3)'
           }}>SolCue</h1>
           <p className="text-xl text-white/95 drop-shadow-lg tracking-wider mb-8">Circadian Light Tracker</p>
-          <p className="text-lg text-white/90 drop-shadow-lg tracking-wider">Developer: Damian Ewens</p>
+          <p className="text-lg text-white/90 drop-shadow-lg tracking-wider mb-2">Developer: Damian Ewens</p>
+          <p className="text-base text-white/85 drop-shadow-lg tracking-wider mb-4">Ocean State of Mind LLC</p>
+          <a 
+            href="https://www.oceanstateofmind.blue/app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-white/90 hover:text-white underline decoration-white/50 hover:decoration-white transition-all duration-300 drop-shadow-lg"
+          >
+            oceanstateofmind.blue/app
+          </a>
         </div>
 
         {/* Content sections */}
         <div className="space-y-8 text-left">
           {/* Ocean State of Mind */}
-          <div className="bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
+          <div className="bg-black/40 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-black/20 rounded-2xl"></div>
             <div className="relative z-10">
               <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow-lg">Ocean State of Mind</h2>
               <p className="text-white/90 leading-relaxed">
@@ -77,8 +86,8 @@ const AboutPage: React.FC<AboutPageProps> = ({ currentTime }) => {
           </div>
 
           {/* Circadian Science */}
-          <div className="bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
+          <div className="bg-black/40 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-black/20 rounded-2xl"></div>
             <div className="relative z-10">
               <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow-lg">The Science of Light</h2>
               <p className="text-white/90 leading-relaxed mb-4">
@@ -95,8 +104,8 @@ const AboutPage: React.FC<AboutPageProps> = ({ currentTime }) => {
           </div>
 
           {/* Company Info */}
-          <div className="bg-white/25 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
+          <div className="bg-black/40 backdrop-blur-md rounded-2xl p-6 border-2 border-white/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-black/20 rounded-2xl"></div>
             <div className="relative z-10">
               <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow-lg">About the App</h2>
               <p className="text-white/90 leading-relaxed">
