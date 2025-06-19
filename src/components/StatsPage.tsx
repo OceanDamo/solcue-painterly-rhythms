@@ -252,11 +252,13 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
           <div className="bg-black/60 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-xl"></div>
             <div className="relative z-10 text-center">
-              <div className="mb-2">
-                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.primeMinutes}</span>
-                <span className="text-white/90 text-xs ml-1">min</span>
+              <div className={`w-16 h-16 mx-auto mb-2 rounded-full bg-gradient-to-br ${getProgressColor(mockStats.primeMinutes / 120)} ${colors.glow} shadow-xl flex items-center justify-center`}>
+                <div>
+                  <span className="text-lg font-bold text-white drop-shadow-lg">{mockStats.primeMinutes}</span>
+                  <span className="text-white/90 text-xs block">min</span>
+                </div>
               </div>
-              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Total Prime Light Today</h3>
+              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Prime Light Today</h3>
               <p className="text-white/70 text-xs">{mockStats.primeMinutesYesterday} min Yesterday</p>
             </div>
           </div>
@@ -265,11 +267,13 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
           <div className="bg-black/60 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-xl"></div>
             <div className="relative z-10 text-center">
-              <div className="mb-2">
-                <span className="text-xl font-bold text-white drop-shadow-lg">{mockStats.weeklyMinutes}</span>
-                <span className="text-white/90 text-xs ml-1">min</span>
+              <div className={`w-16 h-16 mx-auto mb-2 rounded-full bg-gradient-to-br ${getProgressColor(mockStats.weeklyMinutes / 300)} ${colors.glow} shadow-xl flex items-center justify-center`}>
+                <div>
+                  <span className="text-lg font-bold text-white drop-shadow-lg">{mockStats.weeklyMinutes}</span>
+                  <span className="text-white/90 text-xs block">min</span>
+                </div>
               </div>
-              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Total Prime Light This Week</h3>
+              <h3 className="text-sm font-semibold text-white mb-1 drop-shadow-lg">Prime Light Week</h3>
               <p className="text-white/70 text-xs">{mockStats.weeklyMinutesLastWeek} min Last Week</p>
             </div>
           </div>
@@ -307,19 +311,28 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
                       <h4 className="text-white/90 text-sm font-medium">{category.label}</h4>
                     </div>
                     <div className="flex justify-center space-x-1">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                        <button
-                          key={num}
-                          onClick={() => setSelectedScores(prev => ({ ...prev, [category.key]: num }))}
-                          className={`w-6 h-6 rounded-full text-xs font-bold transition-all duration-200 ${
-                            score === num
-                              ? 'bg-white text-black scale-110'
-                              : 'bg-white/20 text-white/70 hover:bg-white/30'
-                          }`}
-                        >
-                          {num}
-                        </button>
-                      ))}
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+                        const isSelected = score === num;
+                        const getScoreColor = (scoreNum: number) => {
+                          if (scoreNum <= 3) return 'bg-red-500/80 text-white';
+                          if (scoreNum <= 6) return 'bg-yellow-500/80 text-white';
+                          return 'bg-green-500/80 text-white';
+                        };
+                        
+                        return (
+                          <button
+                            key={num}
+                            onClick={() => setSelectedScores(prev => ({ ...prev, [category.key]: num }))}
+                            className={`w-6 h-6 rounded-full text-xs font-bold transition-all duration-200 ${
+                              isSelected
+                                ? `${getScoreColor(num)} scale-110 shadow-lg`
+                                : 'bg-white/20 text-white/70 hover:bg-white/30'
+                            }`}
+                          >
+                            {num}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
