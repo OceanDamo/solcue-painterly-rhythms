@@ -48,12 +48,12 @@ const colorThemes = {
 
 // Sunrise/sunset ocean images - curated for SolCue aesthetic
 const defaultImages = [
-  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop', // Ocean sunrise with warm colors
-  'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800&h=800&fit=crop', // Lake sunrise with mountains
-  'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800&h=800&fit=crop', // Ocean sunset with dramatic sky
-  'https://images.unsplash.com/photo-1414609245224-afa02bfb3fda?w=800&h=800&fit=crop', // Beach sunrise with palm trees
-  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop', // Golden hour ocean
-  'https://images.unsplash.com/photo-1484821582734-6c6c9f99a672?w=800&h=800&fit=crop', // Peaceful sunrise over water
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1414609245224-afa02bfb3fda?w=800&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop',
+  'https://images.unsplash.com/photo-1484821582734-6c6c9f99a672?w=800&h=800&fit=crop',
 ];
 
 const PhotoShare: React.FC<PhotoShareProps> = ({
@@ -118,6 +118,72 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
     if (inEveningPrime) return "Evening Prime Light";
     if (currentHour >= sunTimes.sunrise && currentHour <= sunTimes.sunset) return "Daylight";
     return "Night Cycle";
+  };
+
+  // Function to draw the SolCue logo based on your uploaded design
+  const drawSolCueLogo = (ctx: CanvasRenderingContext2D, x: number, y: number, scale: number = 1) => {
+    ctx.save();
+    
+    // Set drawing properties
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3 * scale;
+    ctx.lineCap = 'round';
+    
+    // Draw the main sun circle (larger, like in your design)
+    const sunRadius = 25 * scale;
+    ctx.beginPath();
+    ctx.arc(x, y - 20 * scale, sunRadius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw sun rays around the circle (12 rays like in your design)
+    const rayLength = 15 * scale;
+    const rayStartRadius = sunRadius + 5 * scale;
+    const rayEndRadius = rayStartRadius + rayLength;
+    
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * Math.PI * 2) / 12;
+      const x1 = x + Math.cos(angle) * rayStartRadius;
+      const y1 = (y - 20 * scale) + Math.sin(angle) * rayStartRadius;
+      const x2 = x + Math.cos(angle) * rayEndRadius;
+      const y2 = (y - 20 * scale) + Math.sin(angle) * rayEndRadius;
+      
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    
+    // Draw the horizon line (thicker, like in your design)
+    ctx.lineWidth = 6 * scale;
+    const horizonWidth = 80 * scale;
+    ctx.beginPath();
+    ctx.moveTo(x - horizonWidth/2, y + 30 * scale);
+    ctx.lineTo(x + horizonWidth/2, y + 30 * scale);
+    ctx.stroke();
+    
+    // Draw the wave lines (3 waves, decreasing in width)
+    ctx.lineWidth = 4 * scale;
+    const waveSpacing = 12 * scale;
+    const waveWidths = [60 * scale, 45 * scale, 30 * scale];
+    
+    for (let i = 0; i < 3; i++) {
+      const waveY = y + 45 * scale + i * waveSpacing;
+      const waveWidth = waveWidths[i];
+      
+      ctx.beginPath();
+      ctx.moveTo(x - waveWidth/2, waveY);
+      ctx.lineTo(x + waveWidth/2, waveY);
+      ctx.stroke();
+    }
+    
+    // Draw "SOLCUE" text below the logo
+    ctx.font = `bold ${32 * scale}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.letterSpacing = '2px';
+    ctx.fillText('SOLCUE', x, y + 120 * scale);
+    
+    ctx.restore();
   };
 
   const generateShareableCard = async () => {
@@ -202,65 +268,17 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       ctx.textAlign = 'center';
       ctx.fillText('Light is medicine', canvas.width / 2, bottomY);
 
-      // Draw SolCue logo at bottom right (matching your final design)
+      // Draw SolCue logo at bottom right using your uploaded design
       const logoX = canvas.width - 160;
-      const logoY = canvas.height - 160;
-      
-      // Draw sun icon (matching your logo design)
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(logoX, logoY, 20, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Draw sun rays (12 rays like in your design)
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      for (let i = 0; i < 12; i++) {
-        const angle = (i * Math.PI * 2) / 12;
-        const x1 = logoX + Math.cos(angle) * 28;
-        const y1 = logoY + Math.sin(angle) * 28;
-        const x2 = logoX + Math.cos(angle) * 40;
-        const y2 = logoY + Math.sin(angle) * 40;
-        
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-      
-      // Draw horizontal line (horizon line from your logo)
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(logoX - 50, logoY + 50);
-      ctx.lineTo(logoX + 50, logoY + 50);
-      ctx.stroke();
-      
-      // Draw wave lines (3 waves like in your logo)
-      ctx.lineWidth = 3;
-      for (let i = 0; i < 3; i++) {
-        const y = logoY + 65 + i * 8;
-        const waveLength = 40 - i * 8;
-        ctx.beginPath();
-        ctx.moveTo(logoX - waveLength, y);
-        ctx.lineTo(logoX + waveLength, y);
-        ctx.stroke();
-      }
-      
-      // Draw "SOLCUE" text below logo (right-aligned like in your design)
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.letterSpacing = '3px';
-      ctx.fillText('SOLCUE', logoX, logoY + 120);
+      const logoY = canvas.height - 200;
+      drawSolCueLogo(ctx, logoX, logoY, 1.2); // Scale up slightly for better visibility
 
       // Add session info if tracking (positioned above the logo)
       if (isTracking) {
         ctx.font = '24px -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
         ctx.textAlign = 'right';
-        ctx.fillText(`${formatTime(timeElapsed)} in ${getCurrentPhase()}`, canvas.width - 40, logoY - 40);
+        ctx.fillText(`${formatTime(timeElapsed)} in ${getCurrentPhase()}`, canvas.width - 40, logoY - 60);
       }
 
       setIsGeneratingCard(false);
@@ -380,41 +398,37 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 </div>
               </div>
 
-              {/* SolCue Logo - bottom right (matching your final design) */}
-              <div className="absolute bottom-4 right-4 text-right">
-                {/* Sun icon with rays */}
-                <div className="relative mb-2">
-                  <div className="w-5 h-5 bg-white rounded-full mx-auto relative">
-                    {/* Sun rays */}
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute w-0.5 h-1.5 bg-white"
-                        style={{
-                          top: '-6px',
-                          left: '50%',
-                          transformOrigin: '1px 11px',
-                          transform: `translateX(-50%) rotate(${i * 30}deg)`
-                        }}
-                      />
-                    ))}
-                  </div>
+              {/* SolCue Logo - bottom right using your uploaded design */}
+              <div className="absolute bottom-4 right-4">
+                <svg width="60" height="80" viewBox="0 0 120 160" className="drop-shadow-2xl">
+                  {/* Sun circle */}
+                  <circle cx="60" cy="30" r="20" fill="white" />
+                  
+                  {/* Sun rays */}
+                  <g stroke="white" strokeWidth="2" strokeLinecap="round">
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const angle = (i * Math.PI * 2) / 12;
+                      const x1 = 60 + Math.cos(angle) * 25;
+                      const y1 = 30 + Math.sin(angle) * 25;
+                      const x2 = 60 + Math.cos(angle) * 35;
+                      const y2 = 30 + Math.sin(angle) * 35;
+                      return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />;
+                    })}
+                  </g>
                   
                   {/* Horizon line */}
-                  <div className="w-8 h-0.5 bg-white mx-auto mt-1"></div>
+                  <line x1="20" y1="65" x2="100" y2="65" stroke="white" strokeWidth="4" strokeLinecap="round" />
                   
                   {/* Wave lines */}
-                  <div className="space-y-0.5 mt-1">
-                    <div className="w-6 h-0.5 bg-white mx-auto"></div>
-                    <div className="w-4 h-0.5 bg-white mx-auto"></div>
-                    <div className="w-3 h-0.5 bg-white mx-auto"></div>
-                  </div>
-                </div>
-                
-                {/* SolCue text */}
-                <div className="text-white font-bold text-xs tracking-wider drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
-                  SOLCUE
-                </div>
+                  <line x1="25" y1="75" x2="95" y2="75" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="30" y1="85" x2="90" y2="85" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="35" y1="95" x2="85" y2="95" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                  
+                  {/* SOLCUE text */}
+                  <text x="60" y="120" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold" letterSpacing="1px">
+                    SOLCUE
+                  </text>
+                </svg>
               </div>
 
               {/* Quote Overlay (toggleable) - positioned in lower third */}
