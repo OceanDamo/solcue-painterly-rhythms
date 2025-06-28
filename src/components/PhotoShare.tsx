@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Camera, Share2, Download, X, Sun, Moon } from 'lucide-react';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { useSessionTracking } from '../hooks/useSessionTracking';
+import { getRandomQuote } from '../data/quotes';
 
 interface PhotoShareProps {
   currentTheme: string;
@@ -45,6 +46,13 @@ const colorThemes = {
   },
 };
 
+// Default placeholder images
+const defaultImages = [
+  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&h=800&fit=crop', // Foggy mountain
+  'https://images.unsplash.com/photo-1470813740244-df37b8c1edcb?w=800&h=800&fit=crop', // Blue starry night
+  'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&h=800&fit=crop', // Pine trees
+];
+
 const PhotoShare: React.FC<PhotoShareProps> = ({
   currentTheme,
   sunTimes,
@@ -54,7 +62,9 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
   onClose
 }) => {
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [selectedDefaultImage, setSelectedDefaultImage] = useState<string | null>(null);
   const [isGeneratingCard, setIsGeneratingCard] = useState(false);
+  const [currentQuote] = useState(getRandomQuote());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   const theme = colorThemes[currentTheme as keyof typeof colorThemes];
@@ -70,9 +80,15 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       });
       
       setCapturedPhoto(image.dataUrl || null);
+      setSelectedDefaultImage(null);
     } catch (error) {
       console.error('Error taking photo:', error);
     }
+  };
+
+  const selectDefaultImage = (imageUrl: string) => {
+    setSelectedDefaultImage(imageUrl);
+    setCapturedPhoto(null);
   };
 
   const formatTime = (seconds: number) => {
@@ -97,7 +113,8 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
   };
 
   const generateShareableCard = async () => {
-    if (!capturedPhoto || !canvasRef.current) return;
+    const imageToUse = capturedPhoto || selectedDefaultImage;
+    if (!imageToUse || !canvasRef.current) return;
 
     setIsGeneratingCard(true);
     
@@ -111,72 +128,111 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
 
     // Create gradient background
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, theme.primary + '40');
-    gradient.addColorStop(0.5, theme.secondary + '20');
-    gradient.addColorStop(1, theme.accent + '40');
+    gradient.addColorStop(0, '#1a1a1a');
+    gradient.addColorStop(0.5, '#2d2d2d');
+    gradient.addColorStop(1, '#1a1a1a');
     
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Load and draw user photo
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = async () => {
-      // Draw user photo (circular, centered)
-      const photoSize = 400;
+      // Draw large photo (main focal point)
+      const photoSize = 600;
       const photoX = (canvas.width - photoSize) / 2;
-      const photoY = 200;
+      const photoY = 300;
 
       ctx.save();
       ctx.beginPath();
-      ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2, 0, Math.PI * 2);
+      ctx.roundRect(photoX, photoY, photoSize, photoSize, 20);
       ctx.closePath();
       ctx.clip();
       ctx.drawImage(img, photoX, photoY, photoSize, photoSize);
       ctx.restore();
 
-      // Draw circular border around photo
-      ctx.strokeStyle = theme.primary;
-      ctx.lineWidth = 8;
+      // Draw subtle border around photo
+      ctx.strokeStyle = theme.primary + '80';
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(photoX + photoSize/2, photoY + photoSize/2, photoSize/2 + 4, 0, Math.PI * 2);
+      ctx.roundRect(photoX, photoY, photoSize, photoSize, 20);
       ctx.stroke();
 
-      // Draw SolCue branding
+      // Draw SolCue logo at top (using the uploaded logo as reference)
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 80px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.font = 'bold 72px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('SolCue', canvas.width / 2, 120);
       
-      ctx.font = '40px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = '#ffffff90';
-      ctx.fillText('Circadian Light Tracker', canvas.width / 2, 170);
-
-      // Draw mini sun clock representation
-      const clockSize = 150;
-      const clockX = canvas.width / 2 - clockSize / 2;
-      const clockY = 700;
-      
-      // Clock background
-      ctx.fillStyle = '#00000040';
+      // Draw sun icon (simple representation)
+      const logoY = 120;
       ctx.beginPath();
-      ctx.arc(clockX + clockSize/2, clockY + clockSize/2, clockSize/2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Draw current time indicator
-      const angle = (currentHour / 24) * 360 - 90;
-      const angleRad = (angle * Math.PI) / 180;
-      const sunX = clockX + clockSize/2 + Math.cos(angleRad) * (clockSize/3);
-      const sunY = clockY + clockSize/2 + Math.sin(angleRad) * (clockSize/3);
-      
+      ctx.arc(canvas.width / 2, logoY - 20, 20, 0, Math.PI * 2);
       ctx.fillStyle = theme.primary;
-      ctx.beginPath();
-      ctx.arc(sunX, sunY, 8, 0, Math.PI * 2);
       ctx.fill();
+      
+      // Draw sun rays
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI * 2) / 8;
+        const x1 = canvas.width / 2 + Math.cos(angle) * 30;
+        const y1 = logoY - 20 + Math.sin(angle) * 30;
+        const x2 = canvas.width / 2 + Math.cos(angle) * 40;
+        const y2 = logoY - 20 + Math.sin(angle) * 40;
+        
+        ctx.strokeStyle = theme.primary;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('SOLCUE', canvas.width / 2, logoY + 20);
+      
+      // Draw "Light is Medicine" tagline
+      ctx.font = '32px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = theme.primary;
+      ctx.fillText('Light is Medicine', canvas.width / 2, logoY + 70);
+
+      // Draw inspirational quote
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'center';
+      
+      // Wrap quote text
+      const maxWidth = 900;
+      const words = `"${currentQuote.text}"`.split(' ');
+      const lines = [];
+      let currentLine = '';
+      
+      for (const word of words) {
+        const testLine = currentLine + word + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && currentLine !== '') {
+          lines.push(currentLine);
+          currentLine = word + ' ';
+        } else {
+          currentLine = testLine;
+        }
+      }
+      lines.push(currentLine);
+      
+      // Draw quote lines
+      const quoteStartY = 950;
+      lines.forEach((line, index) => {
+        ctx.fillText(line.trim(), canvas.width / 2, quoteStartY + index * 50);
+      });
+      
+      // Draw quote author
+      ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = theme.primary;
+      ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * 50 + 40);
 
       // Draw session stats
-      const statsY = 900;
+      const statsY = 1400;
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 50px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.font = '40px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.textAlign = 'center';
       
       if (isTracking) {
@@ -185,42 +241,37 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
         ctx.fillText(`Connected to Nature's Rhythm`, canvas.width / 2, statsY);
       }
 
-      ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.font = '32px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.fillStyle = '#ffffff80';
-      ctx.fillText(`${getCurrentTimeString()} • ${getCurrentPhase()}`, canvas.width / 2, statsY + 60);
+      ctx.fillText(`${getCurrentTimeString()} • ${getCurrentPhase()}`, canvas.width / 2, statsY + 50);
 
       // Draw weekly stats if available
       if (stats && stats.weeklyMinutes) {
-        ctx.fillText(`This week: ${Math.floor(stats.weeklyMinutes / 7)}min daily average`, canvas.width / 2, statsY + 120);
+        ctx.fillText(`This week: ${Math.floor(stats.weeklyMinutes / 7)}min daily average`, canvas.width / 2, statsY + 100);
       }
 
-      // Draw inspirational message
-      ctx.font = '44px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = theme.primary;
-      ctx.fillText('Living in sync with nature\'s cycles', canvas.width / 2, 1400);
-
       // Draw theme signature
-      ctx.font = '32px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.fillStyle = '#ffffff60';
-      ctx.fillText(`${theme.name} Theme • Ocean State of Mind`, canvas.width / 2, 1500);
+      ctx.fillText(`${theme.name} Theme • Ocean State of Mind`, canvas.width / 2, 1600);
 
       // Add decorative elements
       ctx.strokeStyle = theme.primary + '40';
       ctx.lineWidth = 2;
       ctx.setLineDash([10, 10]);
       ctx.beginPath();
-      ctx.moveTo(100, 650);
-      ctx.lineTo(canvas.width - 100, 650);
+      ctx.moveTo(100, 250);
+      ctx.lineTo(canvas.width - 100, 250);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(100, 1300);
-      ctx.lineTo(canvas.width - 100, 1300);
+      ctx.moveTo(100, 1350);
+      ctx.lineTo(canvas.width - 100, 1350);
       ctx.stroke();
 
       setIsGeneratingCard(false);
     };
     
-    img.src = capturedPhoto;
+    img.src = imageToUse;
   };
 
   const shareCard = async () => {
@@ -261,6 +312,8 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
     link.click();
   };
 
+  const activeImage = capturedPhoto || selectedDefaultImage;
+
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-black/80 rounded-2xl border border-white/20 p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -275,36 +328,62 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
           </button>
         </div>
 
-        {/* Photo capture section */}
-        {!capturedPhoto ? (
+        {/* Photo capture/selection section */}
+        {!activeImage ? (
           <div className="text-center py-8">
             <div className="mb-6">
               <Camera className="w-16 h-16 text-white/60 mx-auto mb-4" />
-              <p className="text-white/80 mb-2">Capture this moment</p>
+              <p className="text-white/80 mb-2">Capture or choose an image</p>
               <p className="text-white/60 text-sm">
                 {isTracking ? `You've been outside for ${formatTime(timeElapsed)}` : 'Share your connection to nature'}
               </p>
             </div>
             
-            <button
-              onClick={takePhoto}
-              className="px-6 py-3 bg-gradient-to-r text-white rounded-full font-semibold hover:scale-105 transition-transform"
-              style={{ 
-                background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` 
-              }}
-            >
-              Take Photo
-            </button>
+            <div className="space-y-4">
+              <button
+                onClick={takePhoto}
+                className="w-full px-6 py-3 bg-gradient-to-r text-white rounded-full font-semibold hover:scale-105 transition-transform"
+                style={{ 
+                  background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` 
+                }}
+              >
+                Take Photo
+              </button>
+              
+              <div className="text-white/60 text-sm">Or choose a nature scene:</div>
+              
+              <div className="grid grid-cols-3 gap-2">
+                {defaultImages.map((imageUrl, index) => (
+                  <button
+                    key={index}
+                    onClick={() => selectDefaultImage(imageUrl)}
+                    className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform"
+                  >
+                    <img 
+                      src={imageUrl} 
+                      alt={`Nature scene ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
             {/* Photo preview */}
             <div className="aspect-square rounded-xl overflow-hidden">
               <img 
-                src={capturedPhoto} 
-                alt="Captured session" 
+                src={activeImage} 
+                alt="Selected image" 
                 className="w-full h-full object-cover"
               />
+            </div>
+
+            {/* Quote preview */}
+            <div className="bg-white/10 rounded-lg p-4">
+              <p className="text-white/90 text-sm italic mb-2">"{currentQuote.text}"</p>
+              <p className="text-white/70 text-xs">— {currentQuote.author}</p>
             </div>
 
             {/* Session info */}
@@ -333,15 +412,18 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
               </button>
               
               <button
-                onClick={() => setCapturedPhoto(null)}
+                onClick={() => {
+                  setCapturedPhoto(null);
+                  setSelectedDefaultImage(null);
+                }}
                 className="px-4 py-3 bg-white/10 backdrop-blur-md text-white rounded-xl hover:bg-white/20 transition-colors"
               >
-                Retake
+                Choose Again
               </button>
             </div>
 
             {/* Share buttons (shown after card generation) */}
-            {capturedPhoto && !isGeneratingCard && (
+            {!isGeneratingCard && (
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={shareCard}
@@ -351,7 +433,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                   }}
                 >
                   <Share2 className="w-4 h-4" />
-                  Share Story
+                  Share to Social
                 </button>
                 
                 <button
