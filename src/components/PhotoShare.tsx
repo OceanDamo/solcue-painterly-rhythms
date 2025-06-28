@@ -2,7 +2,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Share2, Download, X, Sun, Moon } from 'lucide-react';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
-import { Share } from '@capacitor/share';
 import { useSessionTracking } from '../hooks/useSessionTracking';
 
 interface PhotoShareProps {
@@ -191,8 +190,8 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       ctx.fillText(`${getCurrentTimeString()} • ${getCurrentPhase()}`, canvas.width / 2, statsY + 60);
 
       // Draw weekly stats if available
-      if (stats) {
-        ctx.fillText(`This week: ${Math.floor((stats.weeklyMinutes || 0) / 7)}min daily average`, canvas.width / 2, statsY + 120);
+      if (stats && stats.weeklyMinutes) {
+        ctx.fillText(`This week: ${Math.floor(stats.weeklyMinutes / 7)}min daily average`, canvas.width / 2, statsY + 120);
       }
 
       // Draw inspirational message
@@ -231,13 +230,24 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       const canvas = canvasRef.current;
       const dataUrl = canvas.toDataURL('image/png', 0.9);
       
-      await Share.share({
-        title: 'My SolCue Light Session',
-        text: 'Living in sync with nature\'s circadian rhythms 🌅',
-        url: dataUrl,
-      });
+      // Fallback sharing method using Web Share API or download
+      if (navigator.share) {
+        const blob = await fetch(dataUrl).then(res => res.blob());
+        const file = new File([blob], 'solcue-session.png', { type: 'image/png' });
+        
+        await navigator.share({
+          title: 'My SolCue Light Session',
+          text: 'Living in sync with nature\'s circadian rhythms 🌅',
+          files: [file]
+        });
+      } else {
+        // Fallback to download
+        downloadCard();
+      }
     } catch (error) {
       console.error('Error sharing:', error);
+      // Fallback to download
+      downloadCard();
     }
   };
 
