@@ -1,5 +1,6 @@
+
 import React, { useState, useRef } from 'react';
-import { Camera, Share2, Download, X, Sun, Moon, Quote } from 'lucide-react';
+import { Camera, Share2, Download, X, Sun, Moon, Quote, RefreshCw } from 'lucide-react';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { useSessionTracking } from '../hooks/useSessionTracking';
 import { getRandomQuote } from '../data/quotes';
@@ -67,7 +68,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
   const [selectedDefaultImage, setSelectedDefaultImage] = useState<string | null>(null);
   const [isGeneratingCard, setIsGeneratingCard] = useState(false);
   const [showQuote, setShowQuote] = useState(true);
-  const [currentQuote] = useState(getRandomQuote());
+  const [currentQuote, setCurrentQuote] = useState(getRandomQuote());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
   const theme = colorThemes[currentTheme as keyof typeof colorThemes];
@@ -92,6 +93,10 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
   const selectDefaultImage = (imageUrl: string) => {
     setSelectedDefaultImage(imageUrl);
     setCapturedPhoto(null);
+  };
+
+  const getNextQuote = () => {
+    setCurrentQuote(getRandomQuote());
   };
 
   const formatTime = (seconds: number) => {
@@ -144,63 +149,73 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw quote with shadow backdrop (centered, top area)
-      const quoteText = `"${currentQuote.text}"`;
-      const maxQuoteWidth = canvas.width - 120;
-      
-      // Create shadow backdrop for quote
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(60, 200, canvas.width - 120, 400);
-      
-      // Draw quote text
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, serif';
-      ctx.textAlign = 'center';
-      
-      // Wrap quote text
-      const words = quoteText.split(' ');
-      const lines = [];
-      let currentLine = '';
-      
-      for (const word of words) {
-        const testLine = currentLine + word + ' ';
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxQuoteWidth && currentLine !== '') {
-          lines.push(currentLine.trim());
-          currentLine = word + ' ';
-        } else {
-          currentLine = testLine;
+      // Draw quote with shadow backdrop (centered, middle area) - only if showQuote is true
+      if (showQuote) {
+        const quoteText = `"${currentQuote.text}"`;
+        const maxQuoteWidth = canvas.width - 120;
+        
+        // Create shadow backdrop for quote
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(60, 600, canvas.width - 120, 400);
+        
+        // Draw quote text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, serif';
+        ctx.textAlign = 'center';
+        
+        // Wrap quote text
+        const words = quoteText.split(' ');
+        const lines = [];
+        let currentLine = '';
+        
+        for (const word of words) {
+          const testLine = currentLine + word + ' ';
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxQuoteWidth && currentLine !== '') {
+            lines.push(currentLine.trim());
+            currentLine = word + ' ';
+          } else {
+            currentLine = testLine;
+          }
         }
+        lines.push(currentLine.trim());
+        
+        // Draw quote lines
+        const quoteStartY = 720;
+        lines.forEach((line, index) => {
+          ctx.fillText(line, canvas.width / 2, quoteStartY + index * 60);
+        });
+        
+        // Draw quote author
+        ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * 60 + 80);
       }
-      lines.push(currentLine.trim());
-      
-      // Draw quote lines
-      const quoteStartY = 320;
-      lines.forEach((line, index) => {
-        ctx.fillText(line, canvas.width / 2, quoteStartY + index * 60);
-      });
-      
-      // Draw quote author
-      ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * 60 + 80);
 
-      // Draw SolCue logo at bottom (recreated from your design)
-      const logoY = canvas.height - 400;
+      // Draw "Light is medicine" centered at bottom
+      const bottomY = canvas.height - 120;
+      ctx.font = '42px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText('Light is medicine', canvas.width / 2, bottomY);
+
+      // Draw SolCue logo at bottom right
+      const logoX = canvas.width - 180;
+      const logoY = canvas.height - 180;
       
       // Draw sun icon (matching your logo style)
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(canvas.width / 2, logoY - 40, 25, 0, Math.PI * 2);
+      ctx.arc(logoX, logoY, 25, 0, Math.PI * 2);
       ctx.fill();
       
       // Draw sun rays (matching your logo)
       for (let i = 0; i < 12; i++) {
         const angle = (i * Math.PI * 2) / 12;
-        const x1 = canvas.width / 2 + Math.cos(angle) * 35;
-        const y1 = logoY - 40 + Math.sin(angle) * 35;
-        const x2 = canvas.width / 2 + Math.cos(angle) * 50;
-        const y2 = logoY - 40 + Math.sin(angle) * 50;
+        const x1 = logoX + Math.cos(angle) * 35;
+        const y1 = logoY + Math.sin(angle) * 35;
+        const x2 = logoX + Math.cos(angle) * 50;
+        const y2 = logoY + Math.sin(angle) * 50;
         
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 4;
@@ -214,30 +229,25 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 3;
       for (let i = 0; i < 3; i++) {
-        const y = logoY - 40 + 60 + i * 8;
+        const y = logoY + 60 + i * 8;
         ctx.beginPath();
-        ctx.moveTo(canvas.width / 2 - 60 + i * 10, y);
-        ctx.lineTo(canvas.width / 2 + 60 - i * 10, y);
+        ctx.moveTo(logoX - 40 + i * 8, y);
+        ctx.lineTo(logoX + 40 - i * 8, y);
         ctx.stroke();
       }
       
-      // Draw "SOLCUE" text
+      // Draw "SOLCUE" text below logo
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 72px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.textAlign = 'center';
-      ctx.letterSpacing = '8px';
-      ctx.fillText('SOLCUE', canvas.width / 2, logoY + 80);
-      
-      // Draw "Light is Medicine" tagline
-      ctx.font = '32px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('Light is medicine', canvas.width / 2, logoY + 130);
+      ctx.letterSpacing = '4px';
+      ctx.fillText('SOLCUE', logoX, logoY + 100);
 
       // Add session info if tracking
       if (isTracking) {
         ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.fillText(`${formatTime(timeElapsed)} in ${getCurrentPhase()}`, canvas.width / 2, logoY + 180);
+        ctx.fillText(`${formatTime(timeElapsed)} in ${getCurrentPhase()}`, canvas.width / 2, bottomY - 60);
       }
 
       setIsGeneratingCard(false);
@@ -348,20 +358,27 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 className="w-full h-full object-cover"
               />
               
-              {/* SolCue Logo Overlay (Always visible) */}
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-center">
+              {/* Light is Medicine - centered at bottom */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center">
+                <div className="text-white text-lg font-medium drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                  Light is medicine
+                </div>
+              </div>
+
+              {/* SolCue Logo - bottom right */}
+              <div className="absolute bottom-4 right-4 text-center">
                 {/* Sun icon with rays */}
                 <div className="relative mb-2">
-                  <div className="w-8 h-8 bg-white rounded-full mx-auto relative">
+                  <div className="w-6 h-6 bg-white rounded-full mx-auto relative">
                     {/* Sun rays */}
                     {Array.from({ length: 8 }).map((_, i) => (
                       <div
                         key={i}
-                        className="absolute w-0.5 h-3 bg-white"
+                        className="absolute w-0.5 h-2 bg-white"
                         style={{
-                          top: '-12px',
+                          top: '-8px',
                           left: '50%',
-                          transformOrigin: '2px 20px',
+                          transformOrigin: '1px 14px',
                           transform: `translateX(-50%) rotate(${i * 45}deg)`
                         }}
                       />
@@ -370,19 +387,14 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 </div>
                 
                 {/* SolCue text */}
-                <div className="text-white font-bold text-lg tracking-wider drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                <div className="text-white font-bold text-sm tracking-wider drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                   SOLCUE
-                </div>
-                
-                {/* Light is Medicine tagline */}
-                <div className="text-white text-sm drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
-                  Light is medicine
                 </div>
               </div>
 
               {/* Quote Overlay (toggleable) */}
               {showQuote && (
-                <div className="absolute bottom-4 left-4 right-4">
+                <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2">
                   <div className="bg-black/60 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                     <p className="text-white text-sm italic mb-2">"{currentQuote.text}"</p>
                     <p className="text-white/80 text-xs">— {currentQuote.author}</p>
@@ -391,7 +403,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
               )}
             </div>
 
-            {/* Quote toggle */}
+            {/* Quote controls */}
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => setShowQuote(!showQuote)}
@@ -404,6 +416,16 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 <Quote className="w-4 h-4" />
                 <span className="text-sm">Show Quote</span>
               </button>
+
+              {showQuote && (
+                <button
+                  onClick={getNextQuote}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white/80 rounded-full hover:bg-white/20 transition-colors border border-white/20"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span className="text-sm">Next Quote</span>
+                </button>
+              )}
             </div>
 
             {/* Action buttons */}
@@ -411,9 +433,12 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
               <button
                 onClick={generateShareableCard}
                 disabled={isGeneratingCard}
-                className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-md text-white rounded-xl hover:bg-white/20 transition-colors disabled:opacity-50 font-medium"
+                className="flex-1 px-4 py-3 text-white rounded-xl font-medium hover:scale-105 transition-transform disabled:opacity-50"
+                style={{ 
+                  background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` 
+                }}
               >
-                {isGeneratingCard ? 'Creating...' : 'Create Story Card'}
+                {isGeneratingCard ? 'Creating...' : 'Share to Social'}
               </button>
               
               <button
@@ -423,37 +448,8 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 }}
                 className="px-4 py-3 bg-white/10 backdrop-blur-md text-white rounded-xl hover:bg-white/20 transition-colors"
               >
-                Choose Again
+                Choose New Image
               </button>
-            </div>
-
-            {/* Share buttons (shown after card generation) */}
-            {!isGeneratingCard && (
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={shareCard}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-white rounded-xl font-medium hover:scale-105 transition-transform"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` 
-                  }}
-                >
-                  <Share2 className="w-4 h-4" />
-                  Share to Social
-                </button>
-                
-                <button
-                  onClick={downloadCard}
-                  className="px-4 py-3 bg-white/10 backdrop-blur-md text-white rounded-xl hover:bg-white/20 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            {/* Explanation text */}
-            <div className="text-center text-white/60 text-xs pt-2">
-              <p>"Create Story Card" generates a 9:16 social media ready image</p>
-              <p>"Share to Social" opens your device's native share options</p>
             </div>
           </div>
         )}
