@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sun, Moon, MapPin, Play, Square } from 'lucide-react';
 import { useLocation } from '@/hooks/useLocation';
@@ -13,7 +14,7 @@ const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
   
   // Location and session hooks
   const { location, loading: locationLoading, error: locationError, hasPermission, requestPermission, getCurrentLocation } = useLocation();
-  const { currentSession, startSession, endSession, getWeeklyMinutes, getCurrentStreak } = useSessionTracking();
+  const { currentSession, startSession, endSession, stats } = useSessionTracking();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -61,7 +62,7 @@ const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
       }
       
       const sessionType = inMorningPrime ? 'morning' : inEveningPrime ? 'evening' : 'manual';
-      startSession(sessionType, currentLocation || undefined);
+      startSession(sessionType);
     }
   };
 
@@ -327,14 +328,14 @@ const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
           <div className="bg-white/25 backdrop-blur-md rounded-2xl p-8 border-2 border-white/40 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
             <div className="relative z-10">
-              <div className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">{getCurrentStreak()}</div>
+              <div className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">{stats?.dayStreak || 0}</div>
               <div className="text-white/95 tracking-wide">Day Streak</div>
             </div>
           </div>
           <div className="bg-white/25 backdrop-blur-md rounded-2xl p-8 border-2 border-white/40 text-center shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl"></div>
             <div className="relative z-10">
-              <div className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">{getWeeklyMinutes()}</div>
+              <div className="text-4xl font-bold text-white mb-3 drop-shadow-lg tracking-wide">{stats?.weeklyMinutes || 0}</div>
               <div className="text-white/95 tracking-wide">Minutes This Week</div>
             </div>
           </div>

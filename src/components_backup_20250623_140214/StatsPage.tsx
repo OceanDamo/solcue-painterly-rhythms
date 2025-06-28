@@ -801,7 +801,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime }) => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes breathe {
           0%,
           100% {
