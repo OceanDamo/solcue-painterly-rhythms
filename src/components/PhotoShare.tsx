@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Camera, Share2, Download, X, Sun, Moon, Quote, RefreshCw } from 'lucide-react';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
@@ -120,7 +119,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
     return "Night Cycle";
   };
 
-  // Function to draw the SolCue logo based on your uploaded design
+  // Function to draw the SolCue logo - placeholder for when you upload the actual icons
   const drawSolCueLogo = (ctx: CanvasRenderingContext2D, x: number, y: number, scale: number = 1) => {
     ctx.save();
     
@@ -210,22 +209,24 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       // Add subtle dark overlay for text legibility
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
       gradient.addColorStop(0, 'rgba(0,0,0,0.1)');
-      gradient.addColorStop(0.7, 'rgba(0,0,0,0.3)');
-      gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+      gradient.addColorStop(0.7, 'rgba(0,0,0,0.2)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw quote with shadow backdrop (lower third area) - only if showQuote is true
+      // Draw quote in TOP QUARTER (moved from bottom to avoid logo overlap)
       if (showQuote) {
         const quoteText = `"${currentQuote.text}"`;
         const maxQuoteWidth = canvas.width - 120;
         
-        // Position quote in lower third (starting around 67% down)
-        const quoteAreaStart = canvas.height * 0.67;
+        // Position quote in top quarter (starting around 10% down, ending around 25%)
+        const quoteAreaStart = canvas.height * 0.1;
+        const quoteAreaEnd = canvas.height * 0.25;
+        const quoteAreaHeight = quoteAreaEnd - quoteAreaStart;
         
-        // Create shadow backdrop for quote
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(60, quoteAreaStart, canvas.width - 120, 300);
+        // Create LIGHTER shadow backdrop for quote (more transparent)
+        ctx.fillStyle = 'rgba(0,0,0,0.4)'; // Reduced from 0.6 to 0.4
+        ctx.fillRect(60, quoteAreaStart, canvas.width - 120, quoteAreaHeight);
         
         // Draw quote text
         ctx.fillStyle = '#ffffff';
@@ -249,16 +250,19 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
         }
         lines.push(currentLine.trim());
         
-        // Draw quote lines
-        const quoteStartY = quoteAreaStart + 60;
+        // Draw quote lines - centered in the top quarter
+        const lineHeight = 60;
+        const totalTextHeight = lines.length * lineHeight;
+        const quoteStartY = quoteAreaStart + (quoteAreaHeight - totalTextHeight) / 2 + 40;
+        
         lines.forEach((line, index) => {
-          ctx.fillText(line, canvas.width / 2, quoteStartY + index * 60);
+          ctx.fillText(line, canvas.width / 2, quoteStartY + index * lineHeight);
         });
         
         // Draw quote author
         ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * 60 + 60);
+        ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * lineHeight + 50);
       }
 
       // Draw "Light is medicine" centered at bottom
@@ -268,10 +272,10 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       ctx.textAlign = 'center';
       ctx.fillText('Light is medicine', canvas.width / 2, bottomY);
 
-      // Draw SolCue logo at bottom right using your uploaded design
+      // Draw SolCue logo at bottom right (now with more space since quotes moved up)
       const logoX = canvas.width - 160;
       const logoY = canvas.height - 200;
-      drawSolCueLogo(ctx, logoX, logoY, 1.2); // Scale up slightly for better visibility
+      drawSolCueLogo(ctx, logoX, logoY, 1.2);
 
       // Add session info if tracking (positioned above the logo)
       if (isTracking) {
@@ -391,6 +395,16 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 className="w-full h-full object-cover"
               />
               
+              {/* Quote Overlay (toggleable) - NOW positioned in TOP QUARTER */}
+              {showQuote && (
+                <div className="absolute top-4 left-4 right-4">
+                  <div className="bg-black/40 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                    <p className="text-white text-sm italic mb-2">"{currentQuote.text}"</p>
+                    <p className="text-white/80 text-xs">— {currentQuote.author}</p>
+                  </div>
+                </div>
+              )}
+              
               {/* Light is medicine - centered at bottom */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
                 <div className="text-white text-sm font-medium drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
@@ -398,7 +412,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 </div>
               </div>
 
-              {/* SolCue Logo - bottom right using your uploaded design */}
+              {/* SolCue Logo - bottom right */}
               <div className="absolute bottom-4 right-4">
                 <svg width="60" height="80" viewBox="0 0 120 160" className="drop-shadow-2xl">
                   {/* Sun circle */}
@@ -430,16 +444,6 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                   </text>
                 </svg>
               </div>
-
-              {/* Quote Overlay (toggleable) - positioned in lower third */}
-              {showQuote && (
-                <div className="absolute bottom-16 left-4 right-4">
-                  <div className="bg-black/60 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-                    <p className="text-white text-sm italic mb-2">"{currentQuote.text}"</p>
-                    <p className="text-white/80 text-xs">— {currentQuote.author}</p>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Quote controls */}
