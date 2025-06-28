@@ -1,6 +1,5 @@
-
 import React, { useState, useRef } from 'react';
-import { Camera, Share2, Download, X, Sun, Moon } from 'lucide-react';
+import { Camera, Share2, Download, X, Sun, Moon, Quote } from 'lucide-react';
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { useSessionTracking } from '../hooks/useSessionTracking';
 import { getRandomQuote } from '../data/quotes';
@@ -67,6 +66,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [selectedDefaultImage, setSelectedDefaultImage] = useState<string | null>(null);
   const [isGeneratingCard, setIsGeneratingCard] = useState(false);
+  const [showQuote, setShowQuote] = useState(true);
   const [currentQuote] = useState(getRandomQuote());
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -340,19 +340,70 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Photo preview */}
-            <div className="aspect-square rounded-xl overflow-hidden">
+            {/* Photo preview with overlays */}
+            <div className="aspect-square rounded-xl overflow-hidden relative">
               <img 
                 src={activeImage} 
                 alt="Selected image" 
                 className="w-full h-full object-cover"
               />
+              
+              {/* SolCue Logo Overlay (Always visible) */}
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 text-center">
+                {/* Sun icon with rays */}
+                <div className="relative mb-2">
+                  <div className="w-8 h-8 bg-white rounded-full mx-auto relative">
+                    {/* Sun rays */}
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute w-0.5 h-3 bg-white"
+                        style={{
+                          top: '-12px',
+                          left: '50%',
+                          transformOrigin: '2px 20px',
+                          transform: `translateX(-50%) rotate(${i * 45}deg)`
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+                
+                {/* SolCue text */}
+                <div className="text-white font-bold text-lg tracking-wider drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                  SOLCUE
+                </div>
+                
+                {/* Light is Medicine tagline */}
+                <div className="text-white text-sm drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                  Light is medicine
+                </div>
+              </div>
+
+              {/* Quote Overlay (toggleable) */}
+              {showQuote && (
+                <div className="absolute bottom-4 left-4 right-4">
+                  <div className="bg-black/60 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                    <p className="text-white text-sm italic mb-2">"{currentQuote.text}"</p>
+                    <p className="text-white/80 text-xs">— {currentQuote.author}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Quote preview */}
-            <div className="bg-white/10 rounded-lg p-4">
-              <p className="text-white/90 text-sm italic mb-2">"{currentQuote.text}"</p>
-              <p className="text-white/70 text-xs">— {currentQuote.author}</p>
+            {/* Quote toggle */}
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => setShowQuote(!showQuote)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full transition-colors ${
+                  showQuote 
+                    ? 'bg-white/20 text-white border border-white/30' 
+                    : 'bg-white/10 text-white/60 border border-white/20'
+                }`}
+              >
+                <Quote className="w-4 h-4" />
+                <span className="text-sm">Show Quote</span>
+              </button>
             </div>
 
             {/* Action buttons */}
@@ -398,6 +449,12 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 </button>
               </div>
             )}
+
+            {/* Explanation text */}
+            <div className="text-center text-white/60 text-xs pt-2">
+              <p>"Create Story Card" generates a 9:16 social media ready image</p>
+              <p>"Share to Social" opens your device's native share options</p>
+            </div>
           </div>
         )}
 
