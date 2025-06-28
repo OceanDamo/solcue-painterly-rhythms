@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SolCue</string>
+    <string name="title_activity_main">SolCue</string>
+    <string name="package_name">app.lovable.a34cb0d75f9b47cda9e6d2923619dfd4</string>
+    <string name="custom_url_scheme">app.lovable.a34cb0d75f9b47cda9e6d2923619dfd4</string>
+</resources>

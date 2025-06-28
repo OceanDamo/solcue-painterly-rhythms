@@ -1,0 +1,508 @@
+// components/AddSessionModal.tsx - FIXED VERSION - Date Reset Bug Solved
+import React, { useState, useCallback, useEffect } from "react";
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ScrollView,
+} from "react-native";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LocationService } from "../app/services/LocationService";
+
+interface Props {
+  visible: boolean;
+  onClose: () => void;
+  onSessionAdded: () => void;
+}
+
+export const AddSessionModal: React.FC<Props> = ({
+  visible,
+  onClose,
+  onSessionAdded,
+}) => {
+  // 🔥 KEY FIX: Initialize with current date but DON'T reset it
+  const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [startTime, setStartTime] = useState(() => {
+    const time = new Date();
+    time.setHours(6, 0, 0, 0); // Default 6:00 AM
+    return time;
+  });
+  const [endTime, setEndTime] = useState(() => {
+    const time = new Date();
+    time.setHours(6, 30, 0, 0); // Default 6:30 AM
+    return time;
+  });
+
+  // Picker visibility states
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  // 🔥 KEY FIX: Only reset when modal becomes visible, not on every render
+  useEffect(() => {
+    if (visible) {
+      const now = new Date();
+      setSelectedDate(new Date(now)); // Fresh date only when opening modal
+
+      const defaultStart = new Date(now);
+      defaultStart.setHours(6, 0, 0, 0);
+      setStartTime(defaultStart);
+
+      const defaultEnd = new Date(now);
+      defaultEnd.setHours(6, 30, 0, 0);
+      setEndTime(defaultEnd);
+    }
+  }, [visible]); // Only when visible changes
+
+  // 🔥 KEY FIX: Use useCallback to prevent function recreation
+  const handleDateChange = useCallback(
+    (event: DateTimePickerEvent, date?: Date) => {
+      console.log("Date picker event:", event.type, date);
+      setShowDatePicker(false);
+
+      if (event.type === "set" && date) {
+        console.log("Setting new date:", date);
+        setSelectedDate(new Date(date)); // Create new Date object to ensure re-render
+      }
+    },
+    []
+  );
+
+  const handleStartTimeChange = useCallback(
+    (event: DateTimePickerEvent, time?: Date) => {
+      console.log("Start time picker event:", event.type, time);
+      setShowStartPicker(false);
+
+      if (event.type === "set" && time) {
+        console.log("Setting new start time:", time);
+        setStartTime(new Date(time));
+      }
+    },
+    []
+  );
+
+  const handleEndTimeChange = useCallback(
+    (event: DateTimePickerEvent, time?: Date) => {
+      console.log("End time picker event:", event.type, time);
+      setShowEndPicker(false);
+
+      if (event.type === "set" && time) {
+        console.log("Setting new end time:", time);
+        setEndTime(new Date(time));
+      }
+    },
+    []
+  );
+
+  // Calculate duration
+  const getDurationMinutes = useCallback(() => {
+    const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+    const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+
+    if (endMinutes <= startMinutes) {
+      return 0; // Invalid duration
+    }
+
+    return endMinutes - startMinutes;
+  }, [startTime, endTime]);
+
+  // 🔥 KEY FIX: Memoize formatted values to prevent unnecessary re-renders
+  const formattedDate = selectedDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const formattedStartTime = startTime.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const formattedEndTime = endTime.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const durationMinutes = getDurationMinutes();
+
+  const handleSaveSession = async () => {
+    try {
+      if (durationMinutes <= 0) {
+        Alert.alert("Invalid Time", "End time must be after start time");
+        return;
+      }
+
+      if (durationMinutes < 5) {
+        Alert.alert(
+          "Session Too Short",
+          "Please enter a session of at least 5 minutes"
+        );
+        return;
+      }
+
+      // Create full datetime objects using the selected date
+      const sessionStart = new Date(selectedDate);
+      sessionStart.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+
+      const sessionEnd = new Date(selectedDate);
+      sessionEnd.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
+
+      // Validate that end is after start
+      if (sessionEnd <= sessionStart) {
+        Alert.alert("Invalid Time", "End time must be after start time");
+        return;
+      }
+
+      const duration = Math.floor(
+        (sessionEnd.getTime() - sessionStart.getTime()) / 1000
+      );
+
+      // Get sun times for the selected date
+      const sunTimes = await LocationService.getSunTimesForDate(selectedDate);
+
+      // Check if session overlaps with extended prime windows
+      const sessionStartMinutes =
+        sessionStart.getHours() * 60 + sessionStart.getMinutes();
+      const sessionEndMinutes =
+        sessionEnd.getHours() * 60 + sessionEnd.getMinutes();
+
+      // Extended prime windows (2h 15min each)
+      const { morningStart, morningEnd, eveningStart, eveningEnd } =
+        LocationService.getExtendedPrimeWindowTimes(sunTimes);
+
+      const inSunriseWindow =
+        sessionStartMinutes < morningEnd && sessionEndMinutes > morningStart;
+      const inSunsetWindow =
+        sessionStartMinutes < eveningEnd && sessionEndMinutes > eveningStart;
+
+      // Session qualifies for streak if 10+ minutes in any prime window
+      const qualifiesForStreak =
+        (inSunriseWindow || inSunsetWindow) && durationMinutes >= 10;
+
+      const sessionData = {
+        date: selectedDate.toDateString(),
+        startTime: sessionStart,
+        endTime: sessionEnd,
+        duration,
+        inSunriseWindow,
+        inSunsetWindow,
+        qualifiesForStreak,
+        isManualEntry: true,
+      };
+
+      // Save session to storage
+      const dateString = selectedDate.toDateString();
+      const existingSessionsJson = await AsyncStorage.getItem(
+        `sessions_${dateString}`
+      );
+      const existingSessions = existingSessionsJson
+        ? JSON.parse(existingSessionsJson)
+        : [];
+
+      existingSessions.push(sessionData);
+      await AsyncStorage.setItem(
+        `sessions_${dateString}`,
+        JSON.stringify(existingSessions)
+      );
+
+      // Update daily totals
+      const existingDailyTime = await AsyncStorage.getItem(
+        `outsideTime_${dateString}`
+      );
+      const currentDailyMinutes = existingDailyTime
+        ? parseInt(existingDailyTime)
+        : 0;
+      const newDailyTotal = currentDailyMinutes + durationMinutes;
+      await AsyncStorage.setItem(
+        `outsideTime_${dateString}`,
+        newDailyTotal.toString()
+      );
+
+      // Update prime time if applicable
+      if (inSunriseWindow || inSunsetWindow) {
+        const existingPrimeTime = await AsyncStorage.getItem(
+          `primeTime_${dateString}`
+        );
+        const currentPrimeMinutes = existingPrimeTime
+          ? parseInt(existingPrimeTime)
+          : 0;
+        const newPrimeTotal = currentPrimeMinutes + durationMinutes;
+        await AsyncStorage.setItem(
+          `primeTime_${dateString}`,
+          newPrimeTotal.toString()
+        );
+      }
+
+      // Recalculate streak
+      await LocationService.updateStreak();
+
+      Alert.alert(
+        "Session Added!",
+        `Added ${durationMinutes} minutes${
+          qualifiesForStreak ? " (qualifies for streak!)" : ""
+        }`,
+        [
+          {
+            text: "Great!",
+            onPress: () => {
+              onSessionAdded();
+              onClose();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error saving session:", error);
+      Alert.alert("Error", "Failed to save session. Please try again.");
+    }
+  };
+
+  const handleClose = useCallback(() => {
+    // Reset all picker states when closing
+    setShowDatePicker(false);
+    setShowStartPicker(false);
+    setShowEndPicker(false);
+    onClose();
+  }, [onClose]);
+
+  // Don't render anything if not visible
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent={true}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={styles.modalTitle}>Add Light Session</Text>
+
+            {/* Debug info - remove in production */}
+            <Text style={styles.debugText}>
+              Debug: Date = {selectedDate.toDateString()}
+            </Text>
+
+            {/* Date Selection */}
+            <TouchableOpacity
+              style={styles.inputButton}
+              onPress={() => {
+                console.log("Opening date picker, current date:", selectedDate);
+                setShowDatePicker(true);
+              }}
+            >
+              <Text style={styles.inputLabel}>Date</Text>
+              <Text style={styles.inputValue}>{formattedDate}</Text>
+            </TouchableOpacity>
+
+            {/* Start Time Selection */}
+            <TouchableOpacity
+              style={styles.inputButton}
+              onPress={() => {
+                console.log(
+                  "Opening start time picker, current time:",
+                  startTime
+                );
+                setShowStartPicker(true);
+              }}
+            >
+              <Text style={styles.inputLabel}>Start Time</Text>
+              <Text style={styles.inputValue}>{formattedStartTime}</Text>
+            </TouchableOpacity>
+
+            {/* End Time Selection */}
+            <TouchableOpacity
+              style={styles.inputButton}
+              onPress={() => {
+                console.log("Opening end time picker, current time:", endTime);
+                setShowEndPicker(true);
+              }}
+            >
+              <Text style={styles.inputLabel}>End Time</Text>
+              <Text style={styles.inputValue}>{formattedEndTime}</Text>
+            </TouchableOpacity>
+
+            {/* Duration Display */}
+            <View style={styles.durationDisplay}>
+              <Text style={styles.durationLabel}>Duration</Text>
+              <Text
+                style={[
+                  styles.durationValue,
+                  { color: durationMinutes >= 10 ? "#2ecc71" : "#e74c3c" },
+                ]}
+              >
+                {durationMinutes} minutes
+              </Text>
+              {durationMinutes >= 10 && (
+                <Text style={styles.qualifyText}>✨ Qualifies for streak!</Text>
+              )}
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={handleClose}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  { opacity: durationMinutes > 0 ? 1 : 0.5 },
+                ]}
+                onPress={handleSaveSession}
+                disabled={durationMinutes <= 0}
+              >
+                <Text style={styles.saveButtonText}>Save Session</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+
+          {/* Date Picker */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              maximumDate={new Date()}
+            />
+          )}
+
+          {/* Start Time Picker */}
+          {showStartPicker && (
+            <DateTimePicker
+              value={startTime}
+              mode="time"
+              display="default"
+              onChange={handleStartTimeChange}
+            />
+          )}
+
+          {/* End Time Picker */}
+          {showEndPicker && (
+            <DateTimePicker
+              value={endTime}
+              mode="time"
+              display="default"
+              onChange={handleEndTimeChange}
+            />
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 25,
+    width: "90%",
+    maxWidth: 400,
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 25,
+    color: "#1d7088",
+  },
+  debugText: {
+    fontSize: 12,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 10,
+    fontFamily: "monospace",
+  },
+  inputButton: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: "#6c757d",
+    marginBottom: 5,
+    fontWeight: "500",
+  },
+  inputValue: {
+    fontSize: 16,
+    color: "#1d7088",
+    fontWeight: "600",
+  },
+  durationDisplay: {
+    backgroundColor: "#f0f8ff",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  durationLabel: {
+    fontSize: 14,
+    color: "#6c757d",
+    marginBottom: 5,
+  },
+  durationValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+  qualifyText: {
+    fontSize: 12,
+    color: "#2ecc71",
+    fontWeight: "500",
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#6c757d",
+    borderRadius: 12,
+    paddingVertical: 15,
+    marginRight: 10,
+  },
+  cancelButtonText: {
+    color: "white",
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: "#1d7088",
+    borderRadius: 12,
+    paddingVertical: 15,
+    marginLeft: 10,
+  },
+  saveButtonText: {
+    color: "white",
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});
