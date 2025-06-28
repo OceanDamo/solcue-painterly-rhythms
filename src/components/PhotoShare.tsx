@@ -149,14 +149,17 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw quote with shadow backdrop (centered, middle area) - only if showQuote is true
+      // Draw quote with shadow backdrop (lower third area) - only if showQuote is true
       if (showQuote) {
         const quoteText = `"${currentQuote.text}"`;
         const maxQuoteWidth = canvas.width - 120;
         
+        // Position quote in lower third (starting around 67% down)
+        const quoteAreaStart = canvas.height * 0.67;
+        
         // Create shadow backdrop for quote
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(60, 600, canvas.width - 120, 400);
+        ctx.fillRect(60, quoteAreaStart, canvas.width - 120, 300);
         
         // Draw quote text
         ctx.fillStyle = '#ffffff';
@@ -181,7 +184,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
         lines.push(currentLine.trim());
         
         // Draw quote lines
-        const quoteStartY = 720;
+        const quoteStartY = quoteAreaStart + 60;
         lines.forEach((line, index) => {
           ctx.fillText(line, canvas.width / 2, quoteStartY + index * 60);
         });
@@ -189,7 +192,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
         // Draw quote author
         ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * 60 + 80);
+        ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * 60 + 60);
       }
 
       // Draw "Light is medicine" centered at bottom
@@ -257,6 +260,8 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
   };
 
   const shareCard = async () => {
+    await generateShareableCard();
+    
     if (!canvasRef.current) return;
 
     try {
@@ -392,9 +397,9 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 </div>
               </div>
 
-              {/* Quote Overlay (toggleable) */}
+              {/* Quote Overlay (toggleable) - positioned in lower third */}
               {showQuote && (
-                <div className="absolute top-1/2 left-4 right-4 transform -translate-y-1/2">
+                <div className="absolute bottom-20 left-4 right-4">
                   <div className="bg-black/60 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                     <p className="text-white text-sm italic mb-2">"{currentQuote.text}"</p>
                     <p className="text-white/80 text-xs">— {currentQuote.author}</p>
@@ -431,7 +436,7 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
             {/* Action buttons */}
             <div className="flex gap-3">
               <button
-                onClick={generateShareableCard}
+                onClick={shareCard}
                 disabled={isGeneratingCard}
                 className="flex-1 px-4 py-3 text-white rounded-xl font-medium hover:scale-105 transition-transform disabled:opacity-50"
                 style={{ 
