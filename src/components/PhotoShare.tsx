@@ -196,61 +196,71 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       }
 
       // Draw "Light is medicine" centered at bottom
-      const bottomY = canvas.height - 120;
+      const bottomY = canvas.height - 80;
       ctx.font = '42px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.fillText('Light is medicine', canvas.width / 2, bottomY);
 
-      // Draw SolCue logo at bottom right
-      const logoX = canvas.width - 180;
-      const logoY = canvas.height - 180;
+      // Draw SolCue logo at bottom right (matching your final design)
+      const logoX = canvas.width - 160;
+      const logoY = canvas.height - 160;
       
-      // Draw sun icon (matching your logo style)
+      // Draw sun icon (matching your logo design)
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(logoX, logoY, 25, 0, Math.PI * 2);
+      ctx.arc(logoX, logoY, 20, 0, Math.PI * 2);
       ctx.fill();
       
-      // Draw sun rays (matching your logo)
+      // Draw sun rays (12 rays like in your design)
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
       for (let i = 0; i < 12; i++) {
         const angle = (i * Math.PI * 2) / 12;
-        const x1 = logoX + Math.cos(angle) * 35;
-        const y1 = logoY + Math.sin(angle) * 35;
-        const x2 = logoX + Math.cos(angle) * 50;
-        const y2 = logoY + Math.sin(angle) * 50;
+        const x1 = logoX + Math.cos(angle) * 28;
+        const y1 = logoY + Math.sin(angle) * 28;
+        const x2 = logoX + Math.cos(angle) * 40;
+        const y2 = logoY + Math.sin(angle) * 40;
         
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
       }
       
-      // Draw horizontal lines (waves from logo)
+      // Draw horizontal line (horizon line from your logo)
       ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(logoX - 50, logoY + 50);
+      ctx.lineTo(logoX + 50, logoY + 50);
+      ctx.stroke();
+      
+      // Draw wave lines (3 waves like in your logo)
       ctx.lineWidth = 3;
       for (let i = 0; i < 3; i++) {
-        const y = logoY + 60 + i * 8;
+        const y = logoY + 65 + i * 8;
+        const waveLength = 40 - i * 8;
         ctx.beginPath();
-        ctx.moveTo(logoX - 40 + i * 8, y);
-        ctx.lineTo(logoX + 40 - i * 8, y);
+        ctx.moveTo(logoX - waveLength, y);
+        ctx.lineTo(logoX + waveLength, y);
         ctx.stroke();
       }
       
-      // Draw "SOLCUE" text below logo
+      // Draw "SOLCUE" text below logo (right-aligned like in your design)
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.textAlign = 'center';
-      ctx.letterSpacing = '4px';
-      ctx.fillText('SOLCUE', logoX, logoY + 100);
+      ctx.letterSpacing = '3px';
+      ctx.fillText('SOLCUE', logoX, logoY + 120);
 
-      // Add session info if tracking
+      // Add session info if tracking (positioned above the logo)
       if (isTracking) {
-        ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.fillText(`${formatTime(timeElapsed)} in ${getCurrentPhase()}`, canvas.width / 2, bottomY - 60);
+        ctx.font = '24px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${formatTime(timeElapsed)} in ${getCurrentPhase()}`, canvas.width - 40, logoY - 40);
       }
 
       setIsGeneratingCard(false);
@@ -363,43 +373,53 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 className="w-full h-full object-cover"
               />
               
-              {/* Light is Medicine - centered at bottom */}
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-center">
-                <div className="text-white text-lg font-medium drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+              {/* Light is medicine - centered at bottom */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
+                <div className="text-white text-sm font-medium drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                   Light is medicine
                 </div>
               </div>
 
-              {/* SolCue Logo - bottom right */}
-              <div className="absolute bottom-4 right-4 text-center">
+              {/* SolCue Logo - bottom right (matching your final design) */}
+              <div className="absolute bottom-4 right-4 text-right">
                 {/* Sun icon with rays */}
                 <div className="relative mb-2">
-                  <div className="w-6 h-6 bg-white rounded-full mx-auto relative">
+                  <div className="w-5 h-5 bg-white rounded-full mx-auto relative">
                     {/* Sun rays */}
-                    {Array.from({ length: 8 }).map((_, i) => (
+                    {Array.from({ length: 12 }).map((_, i) => (
                       <div
                         key={i}
-                        className="absolute w-0.5 h-2 bg-white"
+                        className="absolute w-0.5 h-1.5 bg-white"
                         style={{
-                          top: '-8px',
+                          top: '-6px',
                           left: '50%',
-                          transformOrigin: '1px 14px',
-                          transform: `translateX(-50%) rotate(${i * 45}deg)`
+                          transformOrigin: '1px 11px',
+                          transform: `translateX(-50%) rotate(${i * 30}deg)`
                         }}
                       />
                     ))}
                   </div>
+                  
+                  {/* Horizon line */}
+                  <div className="w-8 h-0.5 bg-white mx-auto mt-1"></div>
+                  
+                  {/* Wave lines */}
+                  <div className="space-y-0.5 mt-1">
+                    <div className="w-6 h-0.5 bg-white mx-auto"></div>
+                    <div className="w-4 h-0.5 bg-white mx-auto"></div>
+                    <div className="w-3 h-0.5 bg-white mx-auto"></div>
+                  </div>
                 </div>
                 
                 {/* SolCue text */}
-                <div className="text-white font-bold text-sm tracking-wider drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+                <div className="text-white font-bold text-xs tracking-wider drop-shadow-2xl" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
                   SOLCUE
                 </div>
               </div>
 
               {/* Quote Overlay (toggleable) - positioned in lower third */}
               {showQuote && (
-                <div className="absolute bottom-20 left-4 right-4">
+                <div className="absolute bottom-16 left-4 right-4">
                   <div className="bg-black/60 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                     <p className="text-white text-sm italic mb-2">"{currentQuote.text}"</p>
                     <p className="text-white/80 text-xs">— {currentQuote.author}</p>
