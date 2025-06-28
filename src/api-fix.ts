@@ -1,4 +1,15 @@
+
 // SURGICAL FIX: Block problematic APIs while preserving GPS and core functionality
+
+// Extend Window interface to include the properties we're mocking
+declare global {
+  interface Window {
+    gapi?: any;
+    msal?: any;
+    gtag?: (...args: any[]) => void;
+    fbq?: (...args: any[]) => void;
+  }
+}
 
 // 1. Handle all unhandled promise rejections
 window.addEventListener('unhandledrejection', (event) => {
