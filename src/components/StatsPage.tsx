@@ -411,7 +411,6 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
           glow: "",
           animation: "",
           text: "text-white/90",
-          status: "🌅 Open",
         };
       case "flowing":
         return {
@@ -419,7 +418,6 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
           glow: colors.glow,
           animation: "",
           text: "text-white",
-          status: "🌊 Flowing",
         };
       case "harmony":
         return {
@@ -427,7 +425,6 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
           glow: `${colors.glow} shadow-xl`,
           animation: "",
           text: "text-white",
-          status: "✨ Harmony",
         };
       default:
         return {
@@ -435,7 +432,6 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
           glow: "",
           animation: "",
           text: "text-white/90",
-          status: "🌅 Open",
         };
     }
   };
@@ -455,12 +451,12 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-blue-900 to-gray-900 p-6 text-white">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-blue-900 to-gray-900 p-6 pt-16 text-white">
       <div className="max-w-2xl mx-auto space-y-8 pb-20">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold mb-2">Your Progress</h1>
-          <p className="text-blue-200">Track your circadian rhythm journey</p>
+          <h1 className="text-3xl font-bold mb-2">The Pulse</h1>
+          <p className="text-blue-200">Your circadian light journey</p>
         </div>
 
         {/* Core Stats Grid */}
@@ -505,27 +501,72 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
           </button>
         </div>
 
-        {/* Simple Add Session Modal */}
-        {showAddSession && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-white/20">
-              <h3 className="text-xl font-bold mb-4 text-center">
-                Add Light Session
-              </h3>
+        {/* RESTORED: Circadian Health Challenges - MOVED ABOVE Check-in */}
+        <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/20">
+          <h2 className="text-xl font-bold mb-4 text-center">
+            Circadian Health Challenges
+          </h2>
+          <p className="text-gray-300 text-center mb-6">
+            Evidence-based benefits unlock as you build consistent light
+            exposure habits. These challenges update automatically.
+          </p>
 
-              {/* Import and use the working SimpleAddSession component */}
-              <SimpleAddSession
-                onClose={() => setShowAddSession(false)}
-                onSessionAdded={() => {
-                  setShowAddSession(false);
-                  loadStats(); // Refresh stats after adding session
-                }}
-              />
-            </div>
+          <div className="grid gap-4">
+            {circadianBenefits.map((benefit) => {
+              const progress = benefit.currentDays / benefit.requiredDays;
+              const styles = getStateStyles(benefit.state, progress);
+
+              return (
+                <div
+                  key={benefit.id}
+                  className={`${styles.bg} ${styles.glow} rounded-lg p-4 border-2 transition-all duration-300`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className={`font-bold text-lg ${styles.text}`}>
+                        {benefit.name}
+                      </h3>
+                      <p className="text-gray-300 text-sm">
+                        {benefit.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className={`text-sm mb-3 ${styles.text}`}>
+                    {benefit.shortTip}
+                  </p>
+
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-300">
+                      Progress: {benefit.currentDays}/{benefit.requiredDays}{" "}
+                      days
+                    </span>
+                    <span className={`font-medium ${styles.text}`}>
+                      {Math.round(progress * 100)}%
+                    </span>
+                  </div>
+
+                  {benefit.state === "flowing" && (
+                    <div className="mt-3 bg-white/10 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-full bg-gradient-to-r ${getProgressColor(
+                          progress
+                        )} transition-all duration-500`}
+                        style={{ width: `${progress * 100}%` }}
+                      />
+                    </div>
+                  )}
+
+                  <p className="text-xs text-gray-400 mt-2 italic">
+                    {benefit.evidence}
+                  </p>
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
-        {/* Daily Pulse Check-in */}
+        {/* Daily Pulse Check-in - MOVED BELOW Challenges */}
         <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/20">
           <h2 className="text-xl font-bold mb-4 text-center">
             Daily Pulse Check-in
@@ -569,7 +610,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
             ))}
           </div>
 
-          {/* FIXED: Save button now same width as Add Light Session button */}
+          {/* Save button */}
           <div className="flex justify-center">
             <button
               onClick={handleSaveAllPulseScores}
@@ -577,76 +618,6 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
             >
               Save Check-in
             </button>
-          </div>
-
-          {/* REMOVED: Redundant "Tap Save Check-in" text eliminated */}
-        </div>
-
-        {/* RESTORED: Circadian Health Challenges */}
-        <div className="bg-white/5 backdrop-blur-md rounded-xl p-6 border border-white/20">
-          <h2 className="text-xl font-bold mb-4 text-center">
-            Circadian Health Challenges
-          </h2>
-          <p className="text-gray-300 text-center mb-6">
-            Evidence-based benefits unlock as you build consistent light
-            exposure habits
-          </p>
-
-          <div className="grid gap-4">
-            {circadianBenefits.map((benefit) => {
-              const progress = benefit.currentDays / benefit.requiredDays;
-              const styles = getStateStyles(benefit.state, progress);
-
-              return (
-                <div
-                  key={benefit.id}
-                  className={`${styles.bg} ${styles.glow} rounded-lg p-4 border-2 transition-all duration-300`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className={`font-bold text-lg ${styles.text}`}>
-                        {benefit.name}
-                      </h3>
-                      <p className="text-gray-300 text-sm">
-                        {benefit.description}
-                      </p>
-                    </div>
-                    <span className="text-xs font-medium px-2 py-1 bg-white/20 rounded-full">
-                      {styles.status}
-                    </span>
-                  </div>
-
-                  <p className={`text-sm mb-3 ${styles.text}`}>
-                    {benefit.shortTip}
-                  </p>
-
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-300">
-                      Progress: {benefit.currentDays}/{benefit.requiredDays}{" "}
-                      days
-                    </span>
-                    <span className={`font-medium ${styles.text}`}>
-                      {Math.round(progress * 100)}%
-                    </span>
-                  </div>
-
-                  {benefit.state === "flowing" && (
-                    <div className="mt-3 bg-white/10 rounded-full h-2 overflow-hidden">
-                      <div
-                        className={`h-full bg-gradient-to-r ${getProgressColor(
-                          progress
-                        )} transition-all duration-500`}
-                        style={{ width: `${progress * 100}%` }}
-                      />
-                    </div>
-                  )}
-
-                  <p className="text-xs text-gray-400 mt-2 italic">
-                    {benefit.evidence}
-                  </p>
-                </div>
-              );
-            })}
           </div>
         </div>
 

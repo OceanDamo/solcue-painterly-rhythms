@@ -513,14 +513,15 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
 
   return (
     <div
-      className="min-h-screen p-4 flex flex-col items-center justify-center relative overflow-hidden"
+      className="min-h-screen p-4 flex flex-col items-center relative overflow-hidden"
       style={{
         background: "#000000",
+        paddingTop: "60px",
       }}
     >
-      <div className="relative z-10 max-w-2xl mx-auto text-center flex-1 flex flex-col justify-center">
-        {/* Header */}
-        <div className="mb-8">
+      <div className="relative z-10 max-w-2xl mx-auto text-center">
+        {/* Header - Fixed at top */}
+        <div className="mb-8 mt-8">
           <h1 className="text-4xl font-bold text-white drop-shadow-2xl mb-2 tracking-wide">
             SolCue
           </h1>
@@ -529,16 +530,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
           </p>
         </div>
 
-        {/* FIXED: Today's Stats from Hook */}
-        {stats && (
-          <div className="mb-6 text-center">
-            <div className="text-white text-lg mb-2">
-              Today: {Math.floor((stats.weeklyMinutes || 0) / 7)}m outside
-              {stats.primeMinutes > 0 &&
-                ` • ${stats.primeMinutes}m prime light`}
-            </div>
-          </div>
-        )}
+        {/* Spacer to push content down */}
+        <div className="flex-1"></div>
 
         {/* Main Clock Container */}
         <div className="relative flex justify-center items-center mb-8">
@@ -854,85 +847,6 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
           >
             <Waves className="w-3 h-3" />
           </button>
-
-          {/* About Button */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <button className="flex items-center gap-1 px-2 py-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-xs">
-                <Info className="w-3 h-3" />
-              </button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="h-96 overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>About SolCue - Ocean State of Mind</SheetTitle>
-                <SheetDescription className="text-left space-y-4 mt-4 overflow-y-auto">
-                  <p>
-                    SolCue embodies the "Ocean State of Mind" philosophy - a way
-                    of living that honors natural rhythms and cycles. In our
-                    modern world of artificial light and disconnected schedules,
-                    we've lost touch with the fundamental patterns that have
-                    guided life for millions of years.
-                  </p>
-                  <p>
-                    <strong>Why This Matters Now:</strong> Research shows that
-                    exposure to natural light at specific times - particularly 2
-                    hours after sunrise and 2 hours before sunset - is crucial
-                    for maintaining healthy circadian rhythms. These "prime
-                    windows" help regulate sleep, mood, metabolism, and overall
-                    well-being.
-                  </p>
-                  <p>
-                    <strong>Rewilding Through Light:</strong> Syncing with the
-                    rhythm of light is a first solid step towards rewilding
-                    yourself - remembering who you are when in tune with nature
-                    and your own nature. This isn't just about better sleep;
-                    it's about reconnecting with the ancient wisdom encoded in
-                    your biology.
-                  </p>
-                  <p>
-                    <strong>The Natural Cycle:</strong> The circular clock
-                    visualizes the complete daily light cycle, showing different
-                    phases of natural light throughout the day:
-                  </p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>
-                      <strong>Prime Windows:</strong> Optimal times for 10+
-                      minutes of outdoor light exposure
-                    </li>
-                    <li>
-                      <strong>Twilight Phases:</strong> Civil, nautical, and
-                      astronomical transitions that affect melatonin production
-                    </li>
-                    <li>
-                      <strong>Day/Night Cycle:</strong> Visual representation of
-                      your body's natural circadian rhythm
-                    </li>
-                  </ul>
-                  <p>
-                    <strong>Ocean State Connection:</strong> Like the tides that
-                    ebb and flow with celestial rhythms, our bodies are designed
-                    to sync with natural light patterns. By attuning ourselves
-                    to these cycles, we can experience greater energy, better
-                    sleep, and deeper connection to the natural world around us.
-                  </p>
-                  <p>
-                    <strong>Your Rewilding Journey:</strong> Each moment you
-                    spend outside during the prime windows is a step back toward
-                    your natural self. It's about remembering that you are not
-                    separate from nature - you ARE nature. When you align with
-                    these ancient rhythms, you begin to remember what it feels
-                    like to be truly alive and connected.
-                  </p>
-                  <p>
-                    Use the "Start Light Tracking" feature during prime windows
-                    to build healthy light exposure habits that honor your
-                    body's ancient wisdom and support your journey back to
-                    wholeness.
-                  </p>
-                </SheetDescription>
-              </SheetHeader>
-            </SheetContent>
-          </Sheet>
         </div>
 
         {/* Tide Information */}
