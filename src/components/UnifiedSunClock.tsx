@@ -1,7 +1,8 @@
 // components/UnifiedSunClock.tsx - COMPLETE FIXED VERSION
 import React, { useState, useEffect } from "react";
-import { Sun, Moon, Waves, Clock, Info } from "lucide-react";
+import { Sun, Moon, Waves, Clock, Info, Camera } from "lucide-react";
 import { useSessionTracking } from "../hooks/useSessionTracking";
+import PhotoShare from "./PhotoShare";
 import {
   Sheet,
   SheetContent,
@@ -80,6 +81,7 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
   const [showTides, setShowTides] = useState(false);
   const [currentTheme, setCurrentTheme] = useState("default");
   const [clockFormat, setClockFormat] = useState<ClockFormat>("12hr");
+  const [showPhotoShare, setShowPhotoShare] = useState(false);
 
   // FIXED: Properly use the session tracking hook
   const {
@@ -847,6 +849,15 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
             <Clock className="w-3 h-3" />
           </button>
 
+          {/* Photo Share Button */}
+          <button
+            onClick={() => setShowPhotoShare(true)}
+            className="flex items-center gap-1 px-2 py-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-xs"
+            title="Share your light session"
+          >
+            <Camera className="w-3 h-3" />
+          </button>
+
           {/* Tides Button */}
           <button
             onClick={() => setShowTides(!showTides)}
@@ -949,6 +960,18 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
           </div>
         )}
       </div>
+
+      {/* Photo Share Modal */}
+      {showPhotoShare && (
+        <PhotoShare
+          currentTheme={currentTheme}
+          sunTimes={sunTimes}
+          currentHour={currentHour}
+          isTracking={isTracking}
+          timeElapsed={timeElapsed}
+          onClose={() => setShowPhotoShare(false)}
+        />
+      )}
     </div>
   );
 };
