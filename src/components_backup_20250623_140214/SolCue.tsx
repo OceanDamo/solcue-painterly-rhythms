@@ -349,51 +349,6 @@ const SolCue: React.FC<SolCueProps> = ({ currentTime = new Date() }) => {
       </div>
     </div>
   );
-
-  // Enhanced painterly color palette based on time
-  function getTimeColors() {
-    if (hours >= 5 && hours < 8) {
-      // Sunrise colors - warm dawn palette
-      return {
-        primary: 'from-rose-300 via-orange-300 via-amber-300 to-yellow-400',
-        secondary: 'from-pink-200 via-orange-200 to-yellow-300',
-        accent: 'bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500',
-        glow: 'shadow-orange-400/60',
-        atmospheric: 'from-orange-200/40 via-pink-300/30 to-yellow-200/20',
-        textured: 'from-amber-500/20 via-orange-400/30 to-rose-400/20'
-      };
-    } else if (hours >= 8 && hours < 17) {
-      // Daytime colors - clear sky palette
-      return {
-        primary: 'from-sky-300 via-blue-400 via-cyan-400 to-teal-400',
-        secondary: 'from-blue-200 via-cyan-200 to-sky-300',
-        accent: 'bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-500',
-        glow: 'shadow-blue-400/60',
-        atmospheric: 'from-cyan-200/40 via-blue-300/30 to-sky-200/20',
-        textured: 'from-blue-500/20 via-cyan-400/30 to-teal-400/20'
-      };
-    } else if (hours >= 17 && hours < 20) {
-      // Sunset colors - dramatic evening palette
-      return {
-        primary: 'from-red-400 via-orange-500 via-pink-500 to-purple-600',
-        secondary: 'from-orange-300 via-red-300 to-pink-400',
-        accent: 'bg-gradient-to-br from-orange-500 via-red-500 to-purple-600',
-        glow: 'shadow-red-400/60',
-        atmospheric: 'from-red-200/40 via-orange-300/30 to-purple-200/20',
-        textured: 'from-red-500/20 via-orange-400/30 to-pink-400/20'
-      };
-    } else {
-      // Night colors - deep cosmic palette
-      return {
-        primary: 'from-indigo-700 via-purple-700 via-blue-800 to-slate-800',
-        secondary: 'from-indigo-400 via-purple-500 to-blue-600',
-        accent: 'bg-gradient-to-br from-indigo-600 via-purple-600 to-slate-700',
-        glow: 'shadow-purple-400/60',
-        atmospheric: 'from-indigo-300/40 via-purple-400/30 to-slate-300/20',
-        textured: 'from-indigo-600/20 via-purple-500/30 to-blue-600/20'
-      };
-    }
-  }
 };
 
 export default SolCue;

@@ -46,11 +46,14 @@ const colorThemes = {
   },
 };
 
-// Default placeholder images
+// Sunrise/sunset ocean images - curated for SolCue aesthetic
 const defaultImages = [
-  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&h=800&fit=crop', // Foggy mountain
-  'https://images.unsplash.com/photo-1470813740244-df37b8c1edcb?w=800&h=800&fit=crop', // Blue starry night
-  'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&h=800&fit=crop', // Pine trees
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop', // Ocean sunrise with warm colors
+  'https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800&h=800&fit=crop', // Lake sunrise with mountains
+  'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800&h=800&fit=crop', // Ocean sunset with dramatic sky
+  'https://images.unsplash.com/photo-1414609245224-afa02bfb3fda?w=800&h=800&fit=crop', // Beach sunrise with palm trees
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=800&fit=crop', // Golden hour ocean
+  'https://images.unsplash.com/photo-1484821582734-6c6c9f99a672?w=800&h=800&fit=crop', // Peaceful sunrise over water
 ];
 
 const PhotoShare: React.FC<PhotoShareProps> = ({
@@ -126,147 +129,116 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
     canvas.width = 1080;
     canvas.height = 1920;
 
-    // Create gradient background
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#1a1a1a');
-    gradient.addColorStop(0.5, '#2d2d2d');
-    gradient.addColorStop(1, '#1a1a1a');
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Load and draw user photo
+    // Load and draw background image (full bleed)
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = async () => {
-      // Draw large photo (main focal point)
-      const photoSize = 600;
-      const photoX = (canvas.width - photoSize) / 2;
-      const photoY = 300;
+      // Draw full background image
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(photoX, photoY, photoSize, photoSize, 20);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(img, photoX, photoY, photoSize, photoSize);
-      ctx.restore();
+      // Add subtle dark overlay for text legibility
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, 'rgba(0,0,0,0.1)');
+      gradient.addColorStop(0.7, 'rgba(0,0,0,0.3)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw subtle border around photo
-      ctx.strokeStyle = theme.primary + '80';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.roundRect(photoX, photoY, photoSize, photoSize, 20);
-      ctx.stroke();
-
-      // Draw SolCue logo at top (using the uploaded logo as reference)
+      // Draw quote with shadow backdrop (centered, top area)
+      const quoteText = `"${currentQuote.text}"`;
+      const maxQuoteWidth = canvas.width - 120;
+      
+      // Create shadow backdrop for quote
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(60, 200, canvas.width - 120, 400);
+      
+      // Draw quote text
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 72px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.textAlign = 'center';
-      
-      // Draw sun icon (simple representation)
-      const logoY = 120;
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, logoY - 20, 20, 0, Math.PI * 2);
-      ctx.fillStyle = theme.primary;
-      ctx.fill();
-      
-      // Draw sun rays
-      for (let i = 0; i < 8; i++) {
-        const angle = (i * Math.PI * 2) / 8;
-        const x1 = canvas.width / 2 + Math.cos(angle) * 30;
-        const y1 = logoY - 20 + Math.sin(angle) * 30;
-        const x2 = canvas.width / 2 + Math.cos(angle) * 40;
-        const y2 = logoY - 20 + Math.sin(angle) * 40;
-        
-        ctx.strokeStyle = theme.primary;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-      
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('SOLCUE', canvas.width / 2, logoY + 20);
-      
-      // Draw "Light is Medicine" tagline
-      ctx.font = '32px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = theme.primary;
-      ctx.fillText('Light is Medicine', canvas.width / 2, logoY + 70);
-
-      // Draw inspirational quote
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, serif';
       ctx.textAlign = 'center';
       
       // Wrap quote text
-      const maxWidth = 900;
-      const words = `"${currentQuote.text}"`.split(' ');
+      const words = quoteText.split(' ');
       const lines = [];
       let currentLine = '';
       
       for (const word of words) {
         const testLine = currentLine + word + ' ';
         const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && currentLine !== '') {
-          lines.push(currentLine);
+        if (metrics.width > maxQuoteWidth && currentLine !== '') {
+          lines.push(currentLine.trim());
           currentLine = word + ' ';
         } else {
           currentLine = testLine;
         }
       }
-      lines.push(currentLine);
+      lines.push(currentLine.trim());
       
       // Draw quote lines
-      const quoteStartY = 950;
+      const quoteStartY = 320;
       lines.forEach((line, index) => {
-        ctx.fillText(line.trim(), canvas.width / 2, quoteStartY + index * 50);
+        ctx.fillText(line, canvas.width / 2, quoteStartY + index * 60);
       });
       
       // Draw quote author
-      ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = theme.primary;
-      ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * 50 + 40);
-
-      // Draw session stats
-      const statsY = 1400;
+      ctx.font = '36px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.fillStyle = '#ffffff';
-      ctx.font = '40px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.textAlign = 'center';
+      ctx.fillText(`— ${currentQuote.author}`, canvas.width / 2, quoteStartY + lines.length * 60 + 80);
+
+      // Draw SolCue logo at bottom (recreated from your design)
+      const logoY = canvas.height - 400;
       
-      if (isTracking) {
-        ctx.fillText(`${formatTime(timeElapsed)} in ${getCurrentPhase()}`, canvas.width / 2, statsY);
-      } else {
-        ctx.fillText(`Connected to Nature's Rhythm`, canvas.width / 2, statsY);
+      // Draw sun icon (matching your logo style)
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, logoY - 40, 25, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw sun rays (matching your logo)
+      for (let i = 0; i < 12; i++) {
+        const angle = (i * Math.PI * 2) / 12;
+        const x1 = canvas.width / 2 + Math.cos(angle) * 35;
+        const y1 = logoY - 40 + Math.sin(angle) * 35;
+        const x2 = canvas.width / 2 + Math.cos(angle) * 50;
+        const y2 = logoY - 40 + Math.sin(angle) * 50;
+        
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
       }
-
+      
+      // Draw horizontal lines (waves from logo)
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 3; i++) {
+        const y = logoY - 40 + 60 + i * 8;
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2 - 60 + i * 10, y);
+        ctx.lineTo(canvas.width / 2 + 60 - i * 10, y);
+        ctx.stroke();
+      }
+      
+      // Draw "SOLCUE" text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 72px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.letterSpacing = '8px';
+      ctx.fillText('SOLCUE', canvas.width / 2, logoY + 80);
+      
+      // Draw "Light is Medicine" tagline
       ctx.font = '32px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = '#ffffff80';
-      ctx.fillText(`${getCurrentTimeString()} • ${getCurrentPhase()}`, canvas.width / 2, statsY + 50);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('Light is medicine', canvas.width / 2, logoY + 130);
 
-      // Draw weekly stats if available
-      if (stats && stats.weeklyMinutes) {
-        ctx.fillText(`This week: ${Math.floor(stats.weeklyMinutes / 7)}min daily average`, canvas.width / 2, statsY + 100);
+      // Add session info if tracking
+      if (isTracking) {
+        ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillText(`${formatTime(timeElapsed)} in ${getCurrentPhase()}`, canvas.width / 2, logoY + 180);
       }
-
-      // Draw theme signature
-      ctx.font = '28px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillStyle = '#ffffff60';
-      ctx.fillText(`${theme.name} Theme • Ocean State of Mind`, canvas.width / 2, 1600);
-
-      // Add decorative elements
-      ctx.strokeStyle = theme.primary + '40';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([10, 10]);
-      ctx.beginPath();
-      ctx.moveTo(100, 250);
-      ctx.lineTo(canvas.width - 100, 250);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(100, 1350);
-      ctx.lineTo(canvas.width - 100, 1350);
-      ctx.stroke();
 
       setIsGeneratingCard(false);
     };
@@ -281,7 +253,6 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       const canvas = canvasRef.current;
       const dataUrl = canvas.toDataURL('image/png', 0.9);
       
-      // Fallback sharing method using Web Share API or download
       if (navigator.share) {
         const blob = await fetch(dataUrl).then(res => res.blob());
         const file = new File([blob], 'solcue-session.png', { type: 'image/png' });
@@ -292,12 +263,10 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
           files: [file]
         });
       } else {
-        // Fallback to download
         downloadCard();
       }
     } catch (error) {
       console.error('Error sharing:', error);
-      // Fallback to download
       downloadCard();
     }
   };
@@ -350,18 +319,18 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
                 Take Photo
               </button>
               
-              <div className="text-white/60 text-sm">Or choose a nature scene:</div>
+              <div className="text-white/60 text-sm">Or choose a sunrise/sunset scene:</div>
               
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {defaultImages.map((imageUrl, index) => (
                   <button
                     key={index}
                     onClick={() => selectDefaultImage(imageUrl)}
-                    className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform"
+                    className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform border border-white/20"
                   >
                     <img 
                       src={imageUrl} 
-                      alt={`Nature scene ${index + 1}`}
+                      alt={`Sunrise/sunset scene ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
                   </button>
@@ -384,21 +353,6 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
             <div className="bg-white/10 rounded-lg p-4">
               <p className="text-white/90 text-sm italic mb-2">"{currentQuote.text}"</p>
               <p className="text-white/70 text-xs">— {currentQuote.author}</p>
-            </div>
-
-            {/* Session info */}
-            <div className="bg-white/10 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                {currentHour >= sunTimes.sunrise && currentHour <= sunTimes.sunset ? (
-                  <Sun className="w-5 h-5" style={{ color: theme.primary }} />
-                ) : (
-                  <Moon className="w-5 h-5" style={{ color: theme.primary }} />
-                )}
-                <span className="text-white font-medium">{getCurrentPhase()}</span>
-              </div>
-              <p className="text-white/80 text-sm">
-                {isTracking ? `Session: ${formatTime(timeElapsed)}` : getCurrentTimeString()}
-              </p>
             </div>
 
             {/* Action buttons */}
