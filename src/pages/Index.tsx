@@ -1,13 +1,21 @@
 
+import { useState } from "react";
 import Navigation from "@/components/Navigation";
 import UnifiedSunClock from "@/components/UnifiedSunClock";
 import { Link } from "react-router-dom";
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState<'home' | 'stats' | 'about'>('home');
+  const [currentTime] = useState(new Date());
+
   return (
     <div className="min-h-screen">
       <UnifiedSunClock />
-      <Navigation />
+      <Navigation 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        currentTime={currentTime}
+      />
       
       {/* UV Mockup Test Link */}
       <div className="fixed top-4 right-4 z-50">
