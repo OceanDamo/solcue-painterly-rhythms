@@ -1,5 +1,5 @@
 
-import { Navigation } from "@/components/Navigation";
+import Navigation from "@/components/Navigation";
 import UnifiedSunClock from "@/components/UnifiedSunClock";
 import { Link } from "react-router-dom";
 
