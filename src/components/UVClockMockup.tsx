@@ -83,9 +83,10 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
   const currentHour = hours + minutes / 60;
   const currentUV = calculateUVIndex(currentHour);
 
-  // Create UV segments for the clock
+  // Create UV segments for the clock with blending
   const uvSegments = Array.from({ length: 24 }, (_, hour) => {
     const uvIndex = calculateUVIndex(hour);
+    const nextUvIndex = calculateUVIndex((hour + 1) % 24);
     const startAngle = hoursToAngle(hour) - 90;
     const endAngle = hoursToAngle(hour + 1) - 90;
     
@@ -107,7 +108,9 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
     return {
       hour,
       uvIndex,
+      nextUvIndex,
       color: getUVColor(uvIndex),
+      nextColor: getUVColor(nextUvIndex),
       intensity: getUVIntensity(uvIndex),
       path,
       isPeak: uvIndex >= 9,
@@ -150,7 +153,7 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
               {/* Background circle */}
               <div className="absolute inset-0 rounded-full bg-black/80 backdrop-blur-sm border border-white/20"></div>
 
-              {/* UV Segments */}
+              {/* UV Segments with soft blending */}
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 320 320">
                 <defs>
                   <radialGradient id="peakUVGlow" cx="50%" cy="50%" r="80%">
@@ -158,17 +161,53 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
                     <stop offset="50%" stopColor="#f97316" stopOpacity="0.6" />
                     <stop offset="100%" stopColor="transparent" stopOpacity="0" />
                   </radialGradient>
+                  
+                  {/* Create gradient definitions for each segment blend */}
+                  {uvSegments.map((segment, index) => {
+                    const nextSegment = uvSegments[(index + 1) % uvSegments.length];
+                    return (
+                      <linearGradient
+                        key={`blend-${index}`}
+                        id={`uvBlend-${index}`}
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="0%"
+                      >
+                        <stop offset="0%" stopColor={segment.color} stopOpacity={segment.intensity} />
+                        <stop offset="50%" stopColor={segment.color} stopOpacity={segment.intensity} />
+                        <stop offset="100%" stopColor={nextSegment.color} stopOpacity={nextSegment.intensity * 0.5} />
+                      </linearGradient>
+                    );
+                  })}
                 </defs>
 
-                {uvSegments.map((segment, index) => (
-                  <path
-                    key={index}
-                    d={segment.path}
-                    fill={segment.color}
-                    opacity={segment.intensity}
-                    className={segment.isPeak ? "animate-[pulse_12s_ease-in-out_infinite]" : ""}
-                  />
-                ))}
+                {/* Render segments with soft blending */}
+                <g style={{ filter: 'blur(0.5px)' }}>
+                  {uvSegments.map((segment, index) => (
+                    <path
+                      key={index}
+                      d={segment.path}
+                      fill={`url(#uvBlend-${index})`}
+                      className={segment.isPeak ? "animate-[pulse_24s_ease-in-out_infinite]" : ""}
+                      style={{
+                        mixBlendMode: 'multiply',
+                      }}
+                    />
+                  ))}
+                </g>
+
+                {/* Additional overlay for smoother transitions */}
+                <g style={{ opacity: 0.6, filter: 'blur(1px)' }}>
+                  {uvSegments.map((segment, index) => (
+                    <path
+                      key={`overlay-${index}`}
+                      d={segment.path}
+                      fill={segment.color}
+                      opacity={segment.intensity * 0.3}
+                    />
+                  ))}
+                </g>
               </svg>
 
               {/* Hour markers for reference */}
@@ -219,7 +258,7 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
                       marginTop: `-${sunSize}px`,
                       background: `radial-gradient(circle, ${getUVColor(currentUV)}60 0%, ${getUVColor(currentUV)}30 40%, transparent 70%)`,
                       filter: "blur(8px)",
-                      animation: currentUV >= 9 ? "pulse 12s infinite ease-in-out" : "none",
+                      animation: currentUV >= 9 ? "pulse 24s infinite ease-in-out" : "none",
                     }}
                   ></div>
                   {/* Sun core */}
@@ -295,7 +334,7 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
         </div>
       </div>
       
-      {/* Navigation restored */}
+      {/* Navigation */}
       <Navigation 
         activeTab={activeTab}
         onTabChange={setActiveTab}
