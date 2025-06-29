@@ -1,42 +1,23 @@
 
-import React, { useState, useEffect } from 'react';
+import { Navigation } from "@/components/Navigation";
 import UnifiedSunClock from "@/components/UnifiedSunClock";
-import StatsPage from "@/components/StatsPage";
-import AboutPage from "@/components/AboutPage";
-import Navigation from "@/components/Navigation";
+import { Link } from "react-router-dom";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<'home' | 'stats' | 'about'>('home');
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const renderCurrentPage = () => {
-    switch (activeTab) {
-      case 'home':
-        return <UnifiedSunClock currentTime={currentTime} />;
-      case 'stats':
-        return <StatsPage currentTime={currentTime} />;
-      case 'about':
-        return <AboutPage currentTime={currentTime} />;
-      default:
-        return <UnifiedSunClock currentTime={currentTime} />;
-    }
-  };
-
   return (
-    <div className="relative min-h-screen">
-      {renderCurrentPage()}
-      <Navigation 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        currentTime={currentTime}
-      />
+    <div className="min-h-screen">
+      <UnifiedSunClock />
+      <Navigation />
+      
+      {/* UV Mockup Test Link */}
+      <div className="fixed top-4 right-4 z-50">
+        <Link 
+          to="/uv-mockup" 
+          className="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-purple-700 transition-colors"
+        >
+          UV Test
+        </Link>
+      </div>
     </div>
   );
 };
