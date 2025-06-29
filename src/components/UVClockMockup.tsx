@@ -6,10 +6,31 @@ interface UVClockMockupProps {
   currentTime?: Date;
 }
 
+// Color themes matching the main SolCue app
+const colorThemes = {
+  default: {
+    name: "Natural",
+    representativeColor: "#fbbf24",
+  },
+  purple: {
+    name: "Cosmic Purple", 
+    representativeColor: "#c084fc",
+  },
+  ocean: {
+    name: "Ocean Blue",
+    representativeColor: "#38bdf8",
+  },
+  monochrome: {
+    name: "Midnight",
+    representativeColor: "#9ca3af",
+  },
+};
+
 const UVClockMockup: React.FC<UVClockMockupProps> = ({
   currentTime = new Date(),
 }) => {
   const [time, setTime] = useState(currentTime);
+  const [currentTheme, setCurrentTheme] = useState("default");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -96,34 +117,31 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
   const sunSize = Math.max(20, 20 + (currentUV * 2)); // Larger sun during high UV
 
   return (
-    <div className="min-h-screen bg-black p-4 flex flex-col items-center justify-center">
-      <div className="max-w-2xl mx-auto text-center">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">UV Clock Mockup</h1>
-          <p className="text-lg text-white/90">Real-time UV Index Visualization</p>
+    <div 
+      className="min-h-screen p-4 flex flex-col items-center relative overflow-hidden"
+      style={{
+        background: "#000000",
+        paddingTop: "60px",
+      }}
+    >
+      <div className="relative z-10 max-w-2xl mx-auto text-center">
+        {/* Header - Fixed at top */}
+        <div className="mb-8 mt-8">
+          <h1 className="text-4xl font-bold text-white drop-shadow-2xl mb-2 tracking-wide">
+            SolCue
+          </h1>
+          <p className="text-lg text-white/90 drop-shadow-lg mb-1">
+            Get your vitamin D
+          </p>
+          <p className="text-base text-white/80 drop-shadow-lg">
+            Today's UV Index
+          </p>
         </div>
 
-        {/* Current UV Display */}
-        <div className="mb-6 bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20">
-          <div className="text-white/90 text-sm mb-1">Current UV Index</div>
-          <div 
-            className="text-3xl font-bold mb-2"
-            style={{ color: getUVColor(currentUV) }}
-          >
-            {currentUV}
-          </div>
-          <div className="text-white/70 text-xs">
-            {currentUV === 0 && "No UV - Safe"}
-            {currentUV >= 1 && currentUV <= 2 && "Low UV - Minimal risk"}
-            {currentUV >= 3 && currentUV <= 5 && "Moderate UV - Some protection needed"}
-            {currentUV >= 6 && currentUV <= 7 && "High UV - Protection required"}
-            {currentUV >= 8 && currentUV <= 10 && "Very High UV - Extra protection"}
-            {currentUV >= 11 && "Extreme UV - Avoid midday sun"}
-          </div>
-        </div>
+        {/* Spacer to push content down */}
+        <div className="flex-1"></div>
 
-        {/* UV Clock */}
+        {/* Main Clock Container */}
         <div className="relative flex justify-center items-center mb-8">
           <div className="relative w-80 h-80">
             {/* Background circle */}
@@ -145,7 +163,7 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
                   d={segment.path}
                   fill={segment.color}
                   opacity={segment.intensity}
-                  className={segment.isPeak ? "animate-[pulse_3s_ease-in-out_infinite]" : ""}
+                  className={segment.isPeak ? "animate-[pulse_6s_ease-in-out_infinite]" : ""}
                 />
               ))}
             </svg>
@@ -188,7 +206,7 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
               }}
             >
               <div className="relative">
-                {/* UV-based sun glow */}
+                {/* UV-based sun glow - slowed down pulse */}
                 <div
                   className="absolute inset-0 rounded-full"
                   style={{
@@ -198,7 +216,7 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
                     marginTop: `-${sunSize}px`,
                     background: `radial-gradient(circle, ${getUVColor(currentUV)}60 0%, ${getUVColor(currentUV)}30 40%, transparent 70%)`,
                     filter: "blur(8px)",
-                    animation: currentUV >= 9 ? "pulse 2s infinite ease-in-out" : "none",
+                    animation: currentUV >= 9 ? "pulse 6s infinite ease-in-out" : "none",
                   }}
                 ></div>
                 {/* Sun core */}
@@ -228,26 +246,72 @@ const UVClockMockup: React.FC<UVClockMockupProps> = ({
           </div>
         </div>
 
-        {/* UV Info */}
-        <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 max-w-md mx-auto">
-          <h3 className="text-white font-semibold mb-3">Peak UV Hours Today</h3>
-          <div className="grid grid-cols-3 gap-2 text-sm">
+        {/* Controls - matching main SolCue design */}
+        <div className="flex gap-6 justify-center items-center mb-6">
+          {/* Tiny colored circles for theme selection */}
+          <div className="flex gap-2">
+            {Object.entries(colorThemes).map(([key, themeOption]) => (
+              <button
+                key={key}
+                onClick={() => setCurrentTheme(key)}
+                className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                  currentTheme === key
+                    ? "ring-1 ring-white/60 ring-offset-1 ring-offset-black scale-125"
+                    : "hover:scale-110"
+                }`}
+                style={{ backgroundColor: themeOption.representativeColor }}
+                title={themeOption.name}
+              />
+            ))}
+          </div>
+
+          {/* UV Button - matching main clock design */}
+          <button className="flex items-center gap-1 px-2 py-1 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-white/90 hover:bg-white/20 transition-all duration-300 text-xs">
+            UV
+          </button>
+        </div>
+
+        {/* Peak UV Hours - Horizontal Layout */}
+        <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 max-w-md mx-auto mb-4">
+          <h3 className="text-white font-semibold mb-3 text-center">Peak Hours Today</h3>
+          <div className="flex justify-center items-center gap-2">
             {uvSegments
               .filter(s => s.uvIndex >= 7)
-              .map(segment => (
-                <div key={segment.hour} className="text-center">
+              .map((segment, index) => (
+                <div key={segment.hour} className="text-center flex flex-col items-center">
                   <div 
-                    className="w-8 h-8 rounded-full mx-auto mb-1"
+                    className="w-6 h-6 rounded-full mb-1"
                     style={{ backgroundColor: segment.color }}
                   ></div>
                   <div className="text-white/80 text-xs">
                     {segment.hour === 0 ? "12a" : segment.hour === 12 ? "12p" : 
                      `${segment.hour > 12 ? segment.hour - 12 : segment.hour}${segment.hour >= 12 ? "p" : "a"}`}
                   </div>
-                  <div className="text-white/60 text-xs">UV {segment.uvIndex}</div>
+                  {index < uvSegments.filter(s => s.uvIndex >= 7).length - 1 && (
+                    <div className="w-4 h-0.5 bg-white/30 mt-2"></div>
+                  )}
                 </div>
               ))
             }
+          </div>
+        </div>
+
+        {/* Current UV Display - Below Peak Hours */}
+        <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 max-w-sm mx-auto">
+          <div className="text-white/90 text-sm mb-1">Current UV Index</div>
+          <div 
+            className="text-3xl font-bold mb-2"
+            style={{ color: getUVColor(currentUV) }}
+          >
+            {currentUV}
+          </div>
+          <div className="text-white/70 text-xs">
+            {currentUV === 0 && "No UV - Safe"}
+            {currentUV >= 1 && currentUV <= 2 && "Low UV - Minimal risk"}
+            {currentUV >= 3 && currentUV <= 5 && "Moderate UV - Some protection needed"}
+            {currentUV >= 6 && currentUV <= 7 && "High UV - Protection required"}
+            {currentUV >= 8 && currentUV <= 10 && "Very High UV - Extra protection"}
+            {currentUV >= 11 && "Extreme UV - Avoid midday sun"}
           </div>
         </div>
       </div>
