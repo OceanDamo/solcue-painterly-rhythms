@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   Sun,
@@ -30,6 +31,7 @@ const colorThemes = {
     secondary: "#f59e0b",
     accent: "#dc2626",
     background: "from-amber-900 via-orange-800 to-red-900",
+    representativeColor: "#fbbf24",
   },
   purple: {
     name: "Cosmic Purple",
@@ -37,6 +39,7 @@ const colorThemes = {
     secondary: "#a855f7",
     accent: "#9333ea",
     background: "from-purple-900 via-violet-800 to-indigo-900",
+    representativeColor: "#c084fc",
   },
   ocean: {
     name: "Ocean Blue",
@@ -44,6 +47,7 @@ const colorThemes = {
     secondary: "#0284c7",
     accent: "#06b6d4",
     background: "from-blue-900 via-cyan-800 to-teal-900",
+    representativeColor: "#38bdf8",
   },
   monochrome: {
     name: "Midnight",
@@ -51,6 +55,7 @@ const colorThemes = {
     secondary: "#6b7280",
     accent: "#4b5563",
     background: "from-gray-900 via-slate-800 to-zinc-900",
+    representativeColor: "#9ca3af",
   },
 };
 
@@ -67,15 +72,17 @@ const UnifiedSunClock: React.FC = () => {
   const [showPhotoShare, setShowPhotoShare] = useState(false);
   const [showLocationError, setShowLocationError] = useState(false);
 
-  // Session tracking hook
+  // Session tracking hook - using the correct method names
   const {
     isTracking,
-    startTracking,
-    pauseTracking,
-    resetTracking,
-    timeElapsed,
+    startSession,
+    endSession,
+    getCurrentSessionElapsed,
     stats,
   } = useSessionTracking();
+
+  // Get elapsed time
+  const timeElapsed = getCurrentSessionElapsed();
 
   // Ref for the audio element
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -167,6 +174,17 @@ const UnifiedSunClock: React.FC = () => {
     if (audioRef.current) {
       audioRef.current.pause();
     }
+  };
+
+  // Handle session tracking
+  const handleStartSession = () => {
+    startSession("manual");
+    playAudio();
+  };
+
+  const handleEndSession = () => {
+    endSession();
+    pauseAudio();
   };
 
   return (
@@ -271,26 +289,16 @@ const UnifiedSunClock: React.FC = () => {
           {isTracking ? (
             <>
               <button
-                onClick={pauseTracking}
-                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                <Pause className="w-4 h-4 mr-2 inline-block" />
-                Pause
-              </button>
-              <button
-                onClick={resetTracking}
+                onClick={handleEndSession}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 <X className="w-4 h-4 mr-2 inline-block" />
-                Reset
+                Stop Session
               </button>
             </>
           ) : (
             <button
-              onClick={() => {
-                startTracking();
-                playAudio();
-              }}
+              onClick={handleStartSession}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
               <Play className="w-4 h-4 mr-2 inline-block" />
@@ -309,8 +317,7 @@ const UnifiedSunClock: React.FC = () => {
             {stats && (
               <div className="text-white/60 text-sm">
                 <p>
-                  Morning Prime: {stats.morningPrimeMinutes} minutes / Evening
-                  Prime: {stats.eveningPrimeMinutes} minutes
+                  Weekly Minutes: {stats.weeklyMinutes} / Prime Minutes: {stats.primeMinutes}
                 </p>
               </div>
             )}
