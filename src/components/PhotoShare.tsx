@@ -3,6 +3,7 @@ import { Camera, Share2, Download, X, Sun, Moon, Quote, RefreshCw } from 'lucide
 import { Camera as CapacitorCamera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { useSessionTracking } from '../hooks/useSessionTracking';
 import { getRandomQuote } from '../data/quotes';
+import { Preferences } from '@capacitor/preferences';
 
 interface PhotoShareProps {
   currentTheme: string;
@@ -300,6 +301,9 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
       const canvas = canvasRef.current;
       const dataUrl = canvas.toDataURL('image/png', 0.9);
       
+      // Save to gallery
+      await saveToGallery(dataUrl);
+      
       if (navigator.share) {
         const blob = await fetch(dataUrl).then(res => res.blob());
         const file = new File([blob], 'solcue-session.png', { type: 'image/png' });
@@ -315,6 +319,42 @@ const PhotoShare: React.FC<PhotoShareProps> = ({
     } catch (error) {
       console.error('Error sharing:', error);
       downloadCard();
+    }
+  };
+
+  const saveToGallery = async (dataUrl: string) => {
+    try {
+      const photoId = Date.now().toString();
+      const now = new Date();
+      
+      const savedPhoto = {
+        id: photoId,
+        imageUrl: dataUrl,
+        timestamp: now,
+        sessionData: isTracking ? {
+          duration: timeElapsed,
+          phase: getCurrentPhase(),
+          timeOfDay: getCurrentTimeString()
+        } : undefined,
+        quote: showQuote ? currentQuote : undefined
+      };
+
+      // Load existing photos
+      const { value } = await Preferences.get({ key: 'saved_photos' });
+      const existingPhotos = value ? JSON.parse(value) : [];
+      
+      // Add new photo
+      const updatedPhotos = [savedPhoto, ...existingPhotos];
+      
+      // Save back to storage
+      await Preferences.set({
+        key: 'saved_photos',
+        value: JSON.stringify(updatedPhotos)
+      });
+      
+      console.log('Photo saved to gallery');
+    } catch (error) {
+      console.error('Error saving to gallery:', error);
     }
   };
 
