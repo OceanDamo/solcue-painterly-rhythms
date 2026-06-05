@@ -1,6 +1,7 @@
 // src/hooks/useSessionTracking.tsx - COMPLETE FIXED VERSION
 import { useState, useEffect } from "react";
 import { Preferences } from "@capacitor/preferences";
+import { Geolocation } from "@capacitor/geolocation";
 
 interface Session {
   id: string;
@@ -64,27 +65,21 @@ export const useSessionTracking = () => {
   // 📍 GPS LOCATION FUNCTION
   const getCurrentLocation = async () => {
     try {
-      if ("geolocation" in navigator) {
-        const position = await new Promise<GeolocationPosition>(
-          (resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              timeout: 10000,
-              enableHighAccuracy: false,
-            });
-          }
-        );
+      // Use the native Capacitor Geolocation plugin so iOS shows the app
+      // name ("SolCue") in the permission prompt instead of "localhost".
+      const position = await Geolocation.getCurrentPosition({
+        timeout: 10000,
+        enableHighAccuracy: false,
+      });
 
-        const location: Location = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
+      const location: Location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
 
-        setUserLocation(location);
-        console.log("📍 GPS location:", location);
-        return location;
-      } else {
-        throw new Error("Geolocation not supported");
-      }
+      setUserLocation(location);
+      console.log("📍 GPS location:", location);
+      return location;
     } catch (error) {
       console.log("⚠️ GPS failed, using Providence, RI fallback:", error);
       const fallback = { latitude: 41.8236, longitude: -71.4222 };
