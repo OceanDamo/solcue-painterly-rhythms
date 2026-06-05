@@ -45,12 +45,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSHealthShareUsageDescription</key>
-	<string>SolCue correlates your sleep data with light exposure to provide personalized circadian insights.</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>SolCue saves your mood and wellness check-ins to Apple Health for comprehensive tracking.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SolCue uses your photo library to save and share your light exposure moments.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
