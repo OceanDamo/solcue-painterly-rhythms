@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { Sun, Moon, Waves, Clock, Info, Camera } from "lucide-react";
 import { useSessionTracking } from "../hooks/useSessionTracking";
+import { useLocation } from "../hooks/useLocation";
 import PhotoShare from "./PhotoShare";
+import { captureSunClockImage } from "./UnifiedSunClock";
 import {
   Sheet,
   SheetContent,
@@ -91,6 +93,13 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
     getCurrentSessionElapsed,
     stats,
   } = useSessionTracking();
+
+  // Real GPS location for accurate sun times (Providence, RI fallback).
+  const { location, getCurrentLocation } = useLocation();
+  useEffect(() => {
+    getCurrentLocation();
+  }, []);
+
   console.log("🔍 Hook called, isTracking:", isTracking);
   const theme = colorThemes[currentTheme as keyof typeof colorThemes];
 
@@ -104,20 +113,113 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
   // Convert hours to angle (24-hour clock, midnight at top)
   const hoursToAngle = (hours: number) => (hours / 24) * 360;
 
-  // Real astronomical calculation for any date and location
+  // Real astronomical calculation for any date and location.
+  // Ported from the NOAA Solar Calculator algorithm used in the Watch app
+  // (ios/App/SolCue Watch Watch App/ContentView.swift).
+  // Source: https://gml.noaa.gov/grad/solcalc/calcdetails.html
   const calculateSunTimes = (lat: number, lon: number, date: Date) => {
-    // Simplified astronomical calculation - you could replace with a library like SunCalc
-    const dayOfYear = Math.floor(
-      (date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000
+    const toRad = (d: number) => (d * Math.PI) / 180.0;
+    const toDeg = (r: number) => (r * 180.0) / Math.PI;
+
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1; // JS months are 0-based
+    const day = date.getDate();
+
+    // Julian Day (integer arithmetic, matching the NOAA reference)
+    const a = Math.floor((14 - month) / 12);
+    const y = year + 4800 - a;
+    const m = month + 12 * a - 3;
+    const jdn =
+      day +
+      Math.floor((153 * m + 2) / 5) +
+      365 * y +
+      Math.floor(y / 4) -
+      Math.floor(y / 100) +
+      Math.floor(y / 400) -
+      32045;
+    const jd = jdn + 0.5;
+
+    // Julian Century
+    const jc = (jd - 2451545.0) / 36525.0;
+
+    // Geometric Mean Longitude of the Sun (degrees)
+    const geomMeanLongSun =
+      (280.46646 + jc * (36000.76983 + jc * 0.0003032)) % 360.0;
+
+    // Geometric Mean Anomaly of the Sun (degrees)
+    const geomMeanAnomSun = 357.52911 + jc * (35999.05029 - 0.0001537 * jc);
+
+    // Eccentricity of Earth's orbit
+    const eccentOrbit = 0.016708634 - jc * (0.000042037 + 0.0000001267 * jc);
+
+    // Sun's Equation of the Center
+    const sunEqOfCtr =
+      Math.sin(toRad(geomMeanAnomSun)) *
+        (1.914602 - jc * (0.004817 + 0.000014 * jc)) +
+      Math.sin(toRad(2 * geomMeanAnomSun)) * (0.019993 - 0.000101 * jc) +
+      Math.sin(toRad(3 * geomMeanAnomSun)) * 0.000289;
+
+    // Sun's True Longitude (degrees)
+    const sunTrueLong = geomMeanLongSun + sunEqOfCtr;
+
+    // Sun's Apparent Longitude (degrees)
+    const sunAppLong =
+      sunTrueLong - 0.00569 - 0.00478 * Math.sin(toRad(125.04 - 1934.136 * jc));
+
+    // Mean Obliquity of the Ecliptic (degrees)
+    const meanObliqEcliptic =
+      23.0 +
+      (26.0 +
+        (21.448 - jc * (46.815 + jc * (0.00059 - jc * 0.001813))) / 60.0) /
+        60.0;
+
+    // Obliquity correction (degrees)
+    const obliqCorr =
+      meanObliqEcliptic + 0.00256 * Math.cos(toRad(125.04 - 1934.136 * jc));
+
+    // Sun's Declination (degrees)
+    const sunDeclin = toDeg(
+      Math.asin(Math.sin(toRad(obliqCorr)) * Math.sin(toRad(sunAppLong)))
     );
 
-    // For Providence, RI (41.8236°N, 71.4222°W) in May
-    // These are calculated values that would change daily
-    const solarNoon = 12.75;
-    const dayLength = 14.5; // Hours of daylight in May
+    const varY =
+      Math.tan(toRad(obliqCorr / 2.0)) * Math.tan(toRad(obliqCorr / 2.0));
 
-    const sunrise = solarNoon - dayLength / 2;
-    const sunset = solarNoon + dayLength / 2;
+    // Equation of Time (minutes)
+    const eqTime =
+      4.0 *
+      toDeg(
+        varY * Math.sin(2.0 * toRad(geomMeanLongSun)) -
+          2.0 * eccentOrbit * Math.sin(toRad(geomMeanAnomSun)) +
+          4.0 *
+            eccentOrbit *
+            varY *
+            Math.sin(toRad(geomMeanAnomSun)) *
+            Math.cos(2.0 * toRad(geomMeanLongSun)) -
+          0.5 * varY * varY * Math.sin(4.0 * toRad(geomMeanLongSun)) -
+          1.25 *
+            eccentOrbit *
+            eccentOrbit *
+            Math.sin(2.0 * toRad(geomMeanAnomSun))
+      );
+
+    // Hour Angle of Sunrise (degrees), using the 90.833° zenith for refraction
+    const haSunrise = toDeg(
+      Math.acos(
+        Math.cos(toRad(90.833)) /
+          (Math.cos(toRad(lat)) * Math.cos(toRad(sunDeclin))) -
+          Math.tan(toRad(lat)) * Math.tan(toRad(sunDeclin))
+      )
+    );
+
+    // Local timezone offset in hours (east of GMT positive)
+    const timeZoneOffset = -date.getTimezoneOffset() / 60.0;
+
+    // Solar noon and sunrise/sunset, expressed in local clock hours
+    const solarNoon =
+      (720.0 - 4.0 * lon - eqTime + timeZoneOffset * 60.0) / 60.0;
+    const sunrise = solarNoon - (haSunrise * 4.0) / 60.0;
+    const sunset = solarNoon + (haSunrise * 4.0) / 60.0;
 
     // Twilight calculations (in hours before/after sunrise/sunset)
     const astronomicalTwilight = 1.5;
@@ -241,8 +343,10 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
   const minutes = time.getMinutes();
   const currentHour = hours + minutes / 60;
 
-  // Get sun times for Providence, RI
-  const sunTimes = calculateSunTimes(41.8236, -71.4222, time);
+  // Get sun times for the user's current GPS location (Providence, RI fallback)
+  const latitude = location?.latitude ?? 41.8236;
+  const longitude = location?.longitude ?? -71.4222;
+  const sunTimes = calculateSunTimes(latitude, longitude, time);
   const moonData = calculateMoonPosition(time);
   const tideData = calculateTides();
 
@@ -889,5 +993,132 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
     </div>
   );
 };
+// STEP 1: Fix sun clock size capture in UnifiedSunClock.tsx
+// Replace the captureSunClockImage function with this version that gets ACTUAL size:
 
+export const captureSunClockImage = (): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const svgElement = document.querySelector("svg") as SVGElement;
+
+      if (!svgElement) {
+        reject(new Error("Sun clock SVG not found"));
+        return;
+      }
+
+      // Get the ACTUAL computed size from CSS, not getBoundingClientRect
+      const computedStyle = window.getComputedStyle(svgElement);
+      const actualWidth = parseInt(computedStyle.width);
+      const actualHeight = parseInt(computedStyle.height);
+      const realClockSize = Math.min(actualWidth, actualHeight);
+
+      // If computed style fails, fall back to a reasonable size
+      const finalSize = realClockSize > 0 ? realClockSize : 280; // 280px is typical homepage size
+
+      console.log(
+        "Using clock size:",
+        finalSize,
+        "from computed style:",
+        actualWidth,
+        actualHeight
+      );
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        reject(new Error("Canvas context not available"));
+        return;
+      }
+
+      // Use the actual size
+      canvas.width = finalSize;
+      canvas.height = finalSize;
+
+      // Black background
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, finalSize, finalSize);
+
+      // Get SVG data at correct size
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      const svgUrl = URL.createObjectURL(svgBlob);
+
+      const svgImg = new Image();
+      svgImg.onload = () => {
+        // Draw SVG at correct size
+        ctx.drawImage(svgImg, 0, 0, finalSize, finalSize);
+
+        // Add bright glow effect (proportional to size)
+        const centerX = finalSize / 2;
+        const centerY = finalSize / 2;
+
+        const now = new Date();
+        const hours = now.getHours() + now.getMinutes() / 60;
+        const sunAngle = (hours / 24) * 360 - 90;
+        const sunRadius = finalSize * 0.35;
+
+        const sunX = centerX + Math.cos((sunAngle * Math.PI) / 180) * sunRadius;
+        const sunY = centerY + Math.sin((sunAngle * Math.PI) / 180) * sunRadius;
+
+        // Scale glow size based on clock size
+        const glowScale = finalSize / 280; // 280 is baseline
+
+        // Bright glow effect
+        const outerGlow = ctx.createRadialGradient(
+          sunX,
+          sunY,
+          0,
+          sunX,
+          sunY,
+          30 * glowScale
+        );
+        outerGlow.addColorStop(0, "rgba(255, 215, 0, 0.9)");
+        outerGlow.addColorStop(0.3, "rgba(255, 165, 0, 0.6)");
+        outerGlow.addColorStop(0.7, "rgba(255, 165, 0, 0.3)");
+        outerGlow.addColorStop(1, "rgba(255, 165, 0, 0)");
+
+        ctx.fillStyle = outerGlow;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 30 * glowScale, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // Sun core
+        const coreGradient = ctx.createRadialGradient(
+          sunX,
+          sunY,
+          0,
+          sunX,
+          sunY,
+          8 * glowScale
+        );
+        coreGradient.addColorStop(0, "#ffffff");
+        coreGradient.addColorStop(0.5, "#FFD700");
+        coreGradient.addColorStop(1, "#FFA500");
+
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 8 * glowScale, 0, 2 * Math.PI);
+        ctx.fill();
+
+        URL.revokeObjectURL(svgUrl);
+
+        const dataURL = canvas.toDataURL("image/png", 0.98);
+        console.log("✅ Sun clock captured at correct size:", finalSize);
+        resolve(dataURL);
+      };
+
+      svgImg.onerror = () => {
+        URL.revokeObjectURL(svgUrl);
+        reject(new Error("Failed to load SVG image"));
+      };
+
+      svgImg.src = svgUrl;
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
 export default UnifiedSunClock;

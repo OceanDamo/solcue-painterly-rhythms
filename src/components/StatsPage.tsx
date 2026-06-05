@@ -905,6 +905,7 @@ const SimpleAddSession: React.FC<{
           Add Session
         </button>
       </div>
+
     </div>
   );
 };

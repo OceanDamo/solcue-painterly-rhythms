@@ -1,4 +1,3 @@
-
 // SURGICAL FIX: Block problematic APIs while preserving GPS and core functionality
 
 // Extend Window interface to include the properties we're mocking
@@ -38,13 +37,18 @@ window.fetch = async (...args) => {
     }
   }
   
-  // Allow essential geolocation services (for GPS)
-  if (url.includes('ipapi.co') || url.includes('ip-api.com') || url.includes('geoip')) {
+  // FIXED: Allow reverse geocoding services (for PhotoShare location display)
+  if (url.includes('ipapi.co') || 
+      url.includes('ip-api.com') || 
+      url.includes('geoip') ||
+      url.includes('bigdatacloud.net') ||
+      url.includes('geocode')) {
     try {
+      console.log('✅ Allowing geocoding service:', url);
       return await originalFetch(...args);
     } catch (error) {
-      console.warn('🚫 Geolocation service failed, mocking:', url);
-      return new Response('{"latitude":41.8240,"longitude":-71.4128}', { 
+      console.warn('🚫 Geolocation service failed, using fallback:', url);
+      return new Response('{"latitude":41.8240,"longitude":-71.4128,"city":"Current","locality":"Location"}', { 
         status: 200, 
         headers: { 'Content-Type': 'application/json' }
       });
@@ -96,7 +100,7 @@ if (typeof window !== 'undefined') {
   window.fbq = () => {};
   
   // PRESERVE navigator.geolocation (SolCue needs this!)
-  console.log('✅ External APIs blocked, GPS preserved');
+  console.log('✅ External APIs blocked, GPS and geocoding preserved');
 }
 
-console.log('🛡️ Surgical API protection active - GPS and core functionality preserved');
+console.log('🛡️ Surgical API protection active - GPS and reverse geocoding functional');

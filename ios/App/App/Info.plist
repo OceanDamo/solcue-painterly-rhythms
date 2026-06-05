@@ -5,13 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>SolCue</string>
+	<string>SolCue</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SolCue needs your location to calculate accurate sunrise and sunset times for your area.</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -43,7 +45,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSHealthShareUsageDescription</key>
+	<string>SolCue correlates your sleep data with light exposure to provide personalized circadian insights.</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>SolCue saves your mood and wellness check-ins to Apple Health for comprehensive tracking.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SolCue uses your photo library to save and share your light exposure moments.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SolCue needs your location to calculate accurate sunrise and sunset times for your area.</string>
 </dict>
 </plist>
