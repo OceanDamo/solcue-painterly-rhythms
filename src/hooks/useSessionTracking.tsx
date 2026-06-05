@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Preferences } from "@capacitor/preferences";
 import { Geolocation } from "@capacitor/geolocation";
+import { getPrimeStatus, PROVIDENCE_FALLBACK } from "../lib/sunMath";
 
 interface Session {
   id: string;
@@ -86,63 +87,6 @@ export const useSessionTracking = () => {
       setUserLocation(fallback);
       return fallback;
     }
-  };
-
-  // 🌅 SUN TIME CALCULATION
-  const calculateSunTimes = (location: Location, date: Date) => {
-    const lat = location.latitude;
-    const lon = location.longitude;
-
-    // Simplified calculation for summer months
-    // For Providence area in June: Sunrise ~5:14 AM, Sunset ~8:14 PM
-    const dayOfYear = Math.floor(
-      (date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000
-    );
-
-    // Basic approximation (for production, use SunCalc library)
-    let sunriseHours = 5.23; // ~5:14 AM
-    let sunsetHours = 20.23; // ~8:14 PM
-
-    // Adjust slightly based on latitude (very simplified)
-    if (lat > 42) {
-      // Further north
-      sunriseHours -= 0.2;
-      sunsetHours += 0.2;
-    } else if (lat < 40) {
-      // Further south
-      sunriseHours += 0.2;
-      sunsetHours -= 0.2;
-    }
-
-    console.log(
-      `🌅 Calculated sun times for lat ${lat.toFixed(
-        2
-      )}: Sunrise ${sunriseHours.toFixed(2)}, Sunset ${sunsetHours.toFixed(2)}`
-    );
-
-    return { sunriseHours, sunsetHours };
-  };
-
-  // 🕰️ PRIME WINDOW CALCULATION
-  const getPrimeWindows = () => {
-    if (!userLocation) {
-      // Fallback to Providence times
-      return {
-        morningStart: 4.98, // 15 min before 5:14 AM
-        morningEnd: 7.48, // 2h 15m after 5:14 AM
-        eveningStart: 18.23, // 2h before 8:14 PM
-        eveningEnd: 20.48, // 15 min after 8:14 PM
-      };
-    }
-
-    const sunTimes = calculateSunTimes(userLocation, new Date());
-
-    return {
-      morningStart: sunTimes.sunriseHours - 15 / 60, // 15 min before sunrise
-      morningEnd: sunTimes.sunriseHours + 135 / 60, // 2h 15m after sunrise
-      eveningStart: sunTimes.sunsetHours - 120 / 60, // 2h before sunset
-      eveningEnd: sunTimes.sunsetHours + 15 / 60, // 15 min after sunset
-    };
   };
 
   const loadData = async () => {
@@ -314,36 +258,18 @@ export const useSessionTracking = () => {
 
   const startSession = (type: "morning" | "evening" | "manual") => {
     const now = new Date();
-    const currentHours = now.getHours() + now.getMinutes() / 60;
 
-    // 🔧 FIXED: Use real GPS-based prime windows
-    const primeWindows = getPrimeWindows();
-
-    const inMorningPrime =
-      currentHours >= primeWindows.morningStart &&
-      currentHours <= primeWindows.morningEnd;
-    const inEveningPrime =
-      currentHours >= primeWindows.eveningStart &&
-      currentHours <= primeWindows.eveningEnd;
+    // 🔧 Use the same NOAA-based prime windows the sun clock displays
+    // (sunrise → sunrise+2h in the morning, sunset−2h → sunset in the evening),
+    // computed at the user's GPS location (Providence, RI fallback).
+    const lat = userLocation?.latitude ?? PROVIDENCE_FALLBACK.latitude;
+    const lon = userLocation?.longitude ?? PROVIDENCE_FALLBACK.longitude;
+    const { inMorningPrime, inEveningPrime } = getPrimeStatus(now, lat, lon);
 
     console.log(
-      `⏰ Current time: ${currentHours.toFixed(
-        2
-      )} hours (${now.toLocaleTimeString()})`
-    );
-    console.log(
-      `🌅 Morning prime: ${primeWindows.morningStart.toFixed(
-        2
-      )} - ${primeWindows.morningEnd.toFixed(2)} (${
+      `⏰ Session start: ${now.toLocaleTimeString()} — morning prime ${
         inMorningPrime ? "ACTIVE" : "inactive"
-      })`
-    );
-    console.log(
-      `🌇 Evening prime: ${primeWindows.eveningStart.toFixed(
-        2
-      )} - ${primeWindows.eveningEnd.toFixed(2)} (${
-        inEveningPrime ? "ACTIVE" : "inactive"
-      })`
+      }, evening prime ${inEveningPrime ? "ACTIVE" : "inactive"}`
     );
 
     const newSession: Session = {
