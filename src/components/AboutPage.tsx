@@ -43,7 +43,7 @@ const AboutPage: React.FC<AboutPageProps> = ({ currentTime }) => {
   const colors = getTimeColors();
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${colors.primary} pt-20 px-4 pb-24 transition-all duration-2000 ease-in-out relative overflow-hidden`}>
+    <div className={`min-h-screen h-screen overflow-y-auto bg-gradient-to-br ${colors.primary} pt-20 px-4 pb-24 transition-all duration-2000 ease-in-out relative overflow-x-hidden`}>
       {/* Enhanced atmospheric layers with darker tones */}
       <div className="absolute inset-0 overflow-hidden">
         <div className={`absolute top-0 left-0 w-full h-full bg-gradient-radial ${colors.atmospheric} opacity-20 animate-breathe`}></div>

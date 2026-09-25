@@ -451,7 +451,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ currentTime = new Date() }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-blue-900 to-gray-900 p-6 pt-16 text-white">
+    <div className="min-h-screen h-screen overflow-y-auto bg-gradient-to-b from-gray-900 via-blue-900 to-gray-900 p-6 pt-16 text-white">
       <div className="max-w-2xl mx-auto space-y-8 pb-20">
         {/* Header */}
         <div className="text-center">
