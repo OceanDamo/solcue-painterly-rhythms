@@ -9,25 +9,134 @@ import SwiftUI
 import CoreLocation
 
 // MARK: - Location Manager
+
+// Battery-friendly location: asks for permission once, takes ONE approximate
+// fix when the app becomes active (and again if it has been open for hours),
+// then stops. The last real location is saved on the watch and used if a fresh
+// fix isn't available. There is no made-up default location: if the app has
+// never had a real one, `location` stays nil and the UI explains.
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
+    private let defaults = UserDefaults.standard
+    private var isRequesting = false
+    private var lastFixDate: Date?
+    private var lastAttemptDate: Date?
+
+    // How long before an open app refreshes its location again.
+    private static let staleAfter: TimeInterval = 3 * 60 * 60
+    private static let latKey = "solcue.lastLocation.latitude"
+    private static let lonKey = "solcue.lastLocation.longitude"
+    private static let dateKey = "solcue.lastLocation.date"
+
+    // Always a REAL location: a fresh fix, or the last one saved on the watch.
     @Published var location: CLLocation?
-    @Published var authorizationStatus: CLAuthorizationStatus?
-    
+    @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    @Published var lastRequestFailed = false
+
     override init() {
         super.init()
         manager.delegate = self
+        // Approximate is plenty for sun times.
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
-        manager.requestWhenInUseAuthorization()
-        manager.startUpdatingLocation()
+        authorizationStatus = manager.authorizationStatus
+        loadSavedLocation()
     }
-    
+
+    var isDenied: Bool {
+        authorizationStatus == .denied || authorizationStatus == .restricted
+    }
+
+    // Call when the app becomes active: one fresh fix.
+    func refresh() {
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            // Ask once. The answer arrives in locationManagerDidChangeAuthorization.
+            manager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            requestSingleFix()
+        default:
+            break  // denied or restricted: keep using the saved location, if any
+        }
+    }
+
+    // Cheap check, safe to call often: refreshes only if the last fix is old.
+    func refreshIfStale() {
+        guard let lastFixDate = lastFixDate else { return }
+        // Measure from the last attempt too, so a failed request isn't retried every second.
+        let reference = max(lastFixDate, lastAttemptDate ?? lastFixDate)
+        if Date().timeIntervalSince(reference) > Self.staleAfter {
+            refresh()
+        }
+    }
+
+    private func requestSingleFix() {
+        guard !isRequesting else { return }
+        isRequesting = true
+        lastAttemptDate = Date()
+        manager.requestLocation()  // one fix, then location updates stop by themselves
+    }
+
+    private func loadSavedLocation() {
+        guard let lat = defaults.object(forKey: Self.latKey) as? Double,
+              let lon = defaults.object(forKey: Self.lonKey) as? Double,
+              abs(lat) <= 90, abs(lon) <= 180 else { return }
+        location = CLLocation(latitude: lat, longitude: lon)
+        lastFixDate = defaults.object(forKey: Self.dateKey) as? Date
+    }
+
+    private func save(_ location: CLLocation) {
+        defaults.set(location.coordinate.latitude, forKey: Self.latKey)
+        defaults.set(location.coordinate.longitude, forKey: Self.lonKey)
+        defaults.set(Date(), forKey: Self.dateKey)
+    }
+
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        location = locations.first
+        isRequesting = false
+        // Use the most recent location in the batch, not the first.
+        guard let latest = locations.last else { return }
+        location = latest
+        lastRequestFailed = false
+        lastFixDate = Date()
+        save(latest)
     }
-    
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        authorizationStatus = status
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        isRequesting = false
+        lastRequestFailed = true  // keep whatever real location we already have
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        authorizationStatus = manager.authorizationStatus
+        if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
+            requestSingleFix()
+        }
+    }
+}
+
+// Calm message shown when the app has never had a real location.
+struct LocationMessageView: View {
+    let isDenied: Bool
+    let requestFailed: Bool
+
+    var body: some View {
+        VStack(spacing: 6) {
+            if isDenied || requestFailed {
+                Text("Turn on location to see your sun.")
+                    .font(.system(size: 15, weight: .medium))
+                    .multilineTextAlignment(.center)
+                Text(isDenied
+                     ? "Allow SolCue in Settings > Privacy & Security > Location Services."
+                     : "We couldn't find your location just now.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.6))
+                    .multilineTextAlignment(.center)
+            } else {
+                Text("Finding your sun…")
+                    .font(.system(size: 15, weight: .medium))
+            }
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
     }
 }
 
@@ -83,13 +192,14 @@ struct ContentView: View {
             // Background
             Color.black.edgesIgnoringSafeArea(.all)
             
+            if let sunTimes = calculateSunTimes() {
             VStack(spacing: 0) {
                 // Main circular clock with time labels overlay
                 ZStack {
                     CircularClockView(
                         time: currentTime,
                         theme: themes[currentThemeIndex],
-                        sunTimes: calculateSunTimes()
+                        sunTimes: sunTimes
                     )
                     .frame(width: 160, height: 160, alignment: .center)  // Visual clock size, don't clip
                     
@@ -116,6 +226,10 @@ struct ContentView: View {
                 }
                 .padding(.bottom, 16)  // More padding to ensure dots visible
             }
+            } else {
+                LocationMessageView(isDenied: locationManager.isDenied,
+                                    requestFailed: locationManager.lastRequestFailed)
+            }
         }
         .opacity(scenePhase == .inactive ? 0.6 : 1.0)  // Dim when wrist down (Always-On Display)
         .animation(.easeInOut(duration: 0.3), value: scenePhase)  // Smooth transition
@@ -129,8 +243,18 @@ struct ContentView: View {
                 crownValue = Double(newIndex)  // Snap crown value to integer
             }
         }
+        .onAppear {
+            locationManager.refresh()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // One fresh location each time the app becomes active.
+            if newPhase == .active {
+                locationManager.refresh()
+            }
+        }
         .onReceive(timer) { _ in
             currentTime = Date()
+            locationManager.refreshIfStale()  // refresh if it's been hours
         }
     }
     
@@ -149,12 +273,12 @@ struct ContentView: View {
     }
     
     var sunriseString: String {
-        let sunTimes = calculateSunTimes()
+        guard let sunTimes = calculateSunTimes() else { return "--" }
         return formatHour(sunTimes.sunrise)
     }
     
     var sunsetString: String {
-        let sunTimes = calculateSunTimes()
+        guard let sunTimes = calculateSunTimes() else { return "--" }
         return formatHour(sunTimes.sunset)
     }
     
@@ -173,19 +297,46 @@ struct ContentView: View {
     
     // MARK: - Sun Calculations
     
-    func calculateSunTimes() -> SunTimes {
-        // Get actual coordinates from GPS, fallback to Providence, RI
-        let latitude = locationManager.location?.coordinate.latitude ?? 41.8236
-        let longitude = locationManager.location?.coordinate.longitude ?? -71.4222
-        
-        return calculateSunTimesFor(latitude: latitude, longitude: longitude, date: currentTime)
+    // Sun times for the user's real location, or nil if the app has never had one.
+    func calculateSunTimes() -> SunTimes? {
+        guard let location = locationManager.location else { return nil }
+        return SunCalculator.sunTimes(latitude: location.coordinate.latitude,
+                                      longitude: location.coordinate.longitude,
+                                      date: currentTime)
     }
+}
+
+// MARK: - Sun Calculator
+//
+// NOAA Solar Calculator algorithm - https://gml.noaa.gov/grad/solcalc/calcdetails.html
+// This is a line-for-line port of src/lib/sunMath.ts in the iPhone app. If you
+// change a rule in one, change it in the other so both apps always agree.
+
+// Sun zenith angles (degrees from straight up). 90.833 is sunrise/sunset.
+private let zenithSunrise = 90.833
+private let zenithCivil = 96.0          // sun 6 degrees below the horizon
+private let zenithNautical = 102.0      // sun 12 degrees below the horizon
+private let zenithAstronomical = 108.0  // sun 18 degrees below the horizon
+
+// How long (hours) the sun's colour takes to fade between red-orange and gold
+// around sunrise and sunset. Same length on both ends of the day.
+private let sunColorBlendHours = 0.75
+
+enum PolarState {
+    case none   // the sun rises and sets normally today
+    case day    // polar day: the sun never sets today
+    case night  // polar night: the sun never rises today
+}
+
+enum SunCalculator {
+    private static func clampHour(_ h: Double) -> Double { min(24, max(0, h)) }
     
-    func calculateSunTimesFor(latitude: Double, longitude: Double, date: Date) -> SunTimes {
-        // NOAA Solar Calculator Algorithm
-        // This is the same algorithm used by weather.com and other weather services
-        // Source: https://gml.noaa.gov/grad/solcalc/calcdetails.html
-        
+    // Never returns NaN:
+    //  - sun never rises today -> polar = .night; never sets -> polar = .day
+    //  - a twilight that never occurs collapses onto the next-lighter one
+    //    (astronomical -> nautical -> civil -> sunrise/sunset)
+    //  - times that would spill past midnight are clamped to 0...24
+    static func sunTimes(latitude: Double, longitude: Double, date: Date) -> SunTimes {
         let calendar = Calendar.current
         let year = calendar.component(.year, from: date)
         let month = calendar.component(.month, from: date)
@@ -240,95 +391,65 @@ struct ContentView: View {
                            0.5 * varY * varY * sin(4.0 * geomMeanLongSun * .pi / 180.0) -
                            1.25 * eccentOrbit * eccentOrbit * sin(2.0 * geomMeanAnomSun * .pi / 180.0)) * 180.0 / .pi
         
-        // HA Sunrise (degrees)
-        let haSunrise = acos(cos(90.833 * .pi / 180.0) / (cos(latitude * .pi / 180.0) * cos(sunDeclin * .pi / 180.0)) -
-                            tan(latitude * .pi / 180.0) * tan(sunDeclin * .pi / 180.0)) * 180.0 / .pi
+        // Hour angle (degrees) at which the sun's centre sits at the given zenith
+        // angle. nil when that angle is never reached today (or the maths isn't a number).
+        func hourAngle(for zenith: Double) -> Double? {
+            let cosH = cos(zenith * .pi / 180.0) / (cos(latitude * .pi / 180.0) * cos(sunDeclin * .pi / 180.0)) -
+                       tan(latitude * .pi / 180.0) * tan(sunDeclin * .pi / 180.0)
+            guard cosH.isFinite, cosH <= 1, cosH >= -1 else { return nil }
+            return acos(cosH) * 180.0 / .pi
+        }
         
         // Solar Noon (LST)
         let timeZoneOffset = Double(TimeZone.current.secondsFromGMT(for: date)) / 3600.0
         let solarNoon = (720.0 - 4.0 * longitude - eqTime + timeZoneOffset * 60.0) / 60.0
         
-        // Sunrise Time (LST)
-        let sunrise = solarNoon - haSunrise * 4.0 / 60.0
+        func hourAt(_ ha: Double, _ sign: Double) -> Double {
+            clampHour(solarNoon + sign * ha * 4.0 / 60.0)
+        }
         
-        // Sunset Time (LST)
-        let sunset = solarNoon + haSunrise * 4.0 / 60.0
+        guard let sunHa = hourAngle(for: zenithSunrise) else {
+            // The sun never crosses the horizon today. Above the horizon at solar noon = polar day.
+            let noonZenith = abs(latitude - sunDeclin)
+            let polar: PolarState = (noonZenith.isFinite && noonZenith < zenithSunrise) ? .day : .night
+            // .day: sunrise at 0, sunset at 24 (always up). .night: both at 24 (always down).
+            let rise = polar == .day ? 0.0 : 24.0
+            let set = 24.0
+            return SunTimes(sunrise: rise, sunset: set,
+                            astronomicalStart: rise, nauticalStart: rise, civilStart: rise,
+                            civilEnd: set, nauticalEnd: set, astronomicalEnd: set,
+                            morningPrimeStart: rise, morningPrimeEnd: rise,
+                            eveningPrimeStart: set, eveningPrimeEnd: set,
+                            polar: polar)
+        }
         
-        // Debug output
-        print("🌅 NOAA Solar Times for \(latitude), \(longitude) on \(date):")
-        print("   Sunrise: \(formatHourDebug(sunrise))")
-        print("   Sunset: \(formatHourDebug(sunset))")
-        print("   Solar Noon: \(formatHourDebug(solarNoon))")
+        // Each twilight falls back to the next-lighter one when it never occurs.
+        let civilHa = hourAngle(for: zenithCivil) ?? sunHa
+        let nauticalHa = hourAngle(for: zenithNautical) ?? civilHa
+        let astronomicalHa = hourAngle(for: zenithAstronomical) ?? nauticalHa
+        
+        let sunrise = hourAt(sunHa, -1)
+        let sunset = hourAt(sunHa, 1)
+        let civilDawn = hourAt(civilHa, -1)
+        let civilDusk = hourAt(civilHa, 1)
         
         return SunTimes(
             sunrise: sunrise,
             sunset: sunset,
-            astronomicalStart: sunrise - 1.5,
-            nauticalStart: sunrise - 0.9,
-            civilStart: sunrise - 0.4,
-            civilEnd: sunset + 0.4,
-            nauticalEnd: sunset + 0.9,
-            astronomicalEnd: sunset + 1.5,
-            morningPrimeStart: sunrise,
-            morningPrimeEnd: sunrise + 2,
-            eveningPrimeStart: sunset - 2,
-            eveningPrimeEnd: sunset
-        )
-    }
-    
-    func formatHourDebug(_ hour: Double) -> String {
-        let h = Int(hour)
-        let m = Int((hour - Double(h)) * 60)
-        let period = h >= 12 ? "PM" : "AM"
-        let displayHour = h > 12 ? h - 12 : (h == 0 ? 12 : h)
-        return String(format: "%d:%02d %@", displayHour, m, period)
-    }
-    
-    func getSunGlowConfig(currentHour: Double, sunTimes: SunTimes, inMorningPrime: Bool, inEveningPrime: Bool) -> SunGlowConfig {
-        // Sunrise glow (deep orange to golden yellow)
-        if inMorningPrime {
-            return SunGlowConfig(
-                coreColor: Color(hex: "ffd54f"),     // Golden yellow
-                innerColor: Color(hex: "ffa726"),    // Orange
-                middleColor: Color(hex: "ff6b35"),   // Deep orange
-                outerColor: Color(hex: "ff8a65"),    // Soft coral
-                innerPulseScale: 1.15,  // Bigger pulse during prime
-                outerPulseScale: 1.2
-            )
-        }
-        
-        // Sunset glow (golden orange to deep amber)
-        if inEveningPrime {
-            return SunGlowConfig(
-                coreColor: Color(hex: "ffb74d"),     // Golden amber
-                innerColor: Color(hex: "ff9800"),    // Deep orange
-                middleColor: Color(hex: "f4511e"),   // Burnt orange
-                outerColor: Color(hex: "d84315"),    // Deep red-orange
-                innerPulseScale: 1.15,
-                outerPulseScale: 1.2
-            )
-        }
-        
-        // Midday sun (bright, minimal pulse)
-        if currentHour >= sunTimes.morningPrimeEnd && currentHour < sunTimes.eveningPrimeStart {
-            return SunGlowConfig(
-                coreColor: Color(hex: "ffeb3b"),     // Bright yellow
-                innerColor: Color(hex: "fff176"),    // Light yellow
-                middleColor: Color(hex: "fdd835"),   // Yellow
-                outerColor: Color(hex: "fbc02d"),    // Amber
-                innerPulseScale: 1.05,  // Subtle pulse
-                outerPulseScale: 1.08
-            )
-        }
-        
-        // Night/twilight sun (dim, minimal pulse)
-        return SunGlowConfig(
-            coreColor: Color(hex: "ffcc80"),         // Pale orange
-            innerColor: Color(hex: "ffb74d"),        // Muted orange
-            middleColor: Color(hex: "ff9800"),       // Orange
-            outerColor: Color(hex: "f57c00"),        // Dark orange
-            innerPulseScale: 1.02,  // Very subtle
-            outerPulseScale: 1.03
+            astronomicalStart: hourAt(astronomicalHa, -1),
+            nauticalStart: hourAt(nauticalHa, -1),
+            civilStart: civilDawn,
+            civilEnd: civilDusk,
+            nauticalEnd: hourAt(nauticalHa, 1),
+            astronomicalEnd: hourAt(astronomicalHa, 1),
+            // Prime windows:
+            //   morning = civil dawn ("first light") -> sunrise + 2 hours
+            //   evening = sunset - 2 hours -> civil dusk ("last light")
+            morningPrimeStart: civilDawn,
+            morningPrimeEnd: clampHour(sunrise + 2),
+            eveningPrimeStart: clampHour(sunset - 2),
+            eveningPrimeEnd: civilDusk,
+            polar: .none
         )
     }
 }
@@ -382,8 +503,8 @@ struct CircularClockView: View {
             
             // Calculate current time and prime window status
             let currentHour = Double(Calendar.current.component(.hour, from: time)) + Double(Calendar.current.component(.minute, from: time)) / 60.0
-            let inMorningPrime = currentHour >= sunTimes.morningPrimeStart && currentHour <= sunTimes.morningPrimeEnd
-            let inEveningPrime = currentHour >= sunTimes.eveningPrimeStart && currentHour <= sunTimes.eveningPrimeEnd
+            let inMorningPrime = sunTimes.inMorningPrime(at: currentHour)
+            let inEveningPrime = sunTimes.inEveningPrime(at: currentHour)
             
             // BLENDED SEGMENTS - Simplified gradient
             let gradientStops = createGradientStops(
@@ -489,23 +610,22 @@ struct CircularClockView: View {
     
     
     func getSunGlowConfig(currentHour: Double, sunTimes: SunTimes, inMorningPrime: Bool, inEveningPrime: Bool) -> SunGlowConfig {
-        let afterSunset = currentHour < sunTimes.sunrise || currentHour > sunTimes.sunset
+        // NIGHT - red/orange sun from sunset until sunrise (this includes first
+        // light, the mirror image of the sunset glow).
+        let night = SunGlowConfig(
+            coreColor: Color(hex: "ff6b4a"),    // Deep red-orange
+            innerColor: Color(hex: "ff5733"),    // Red-orange
+            middleColor: Color(hex: "e74c3c"),   // Deeper red
+            outerColor: Color(hex: "c0392b"),    // Dark red
+            innerPulseScale: 1.02,
+            outerPulseScale: 1.03
+        )
         
-        // AFTER SUNSET - Red/Orange sun (nature's surprise!)
-        if afterSunset {
-            return SunGlowConfig(
-                coreColor: Color(hex: "ff6b4a"),    // Deep red-orange
-                innerColor: Color(hex: "ff5733"),    // Red-orange
-                middleColor: Color(hex: "e74c3c"),   // Deeper red
-                outerColor: Color(hex: "c0392b"),    // Dark red
-                innerPulseScale: 1.02,
-                outerPulseScale: 1.03
-            )
-        }
-        
-        // Sunrise glow (deep orange to golden yellow)
+        // DAYTIME colours
+        let day: SunGlowConfig
         if inMorningPrime {
-            return SunGlowConfig(
+            // Sunrise glow (deep orange to golden yellow)
+            day = SunGlowConfig(
                 coreColor: Color(hex: "ffd54f"),
                 innerColor: Color(hex: "ffa726"),
                 middleColor: Color(hex: "ff6b35"),
@@ -513,11 +633,9 @@ struct CircularClockView: View {
                 innerPulseScale: 1.15,
                 outerPulseScale: 1.2
             )
-        }
-        
-        // Sunset glow (golden orange to deep amber)
-        if inEveningPrime {
-            return SunGlowConfig(
+        } else if inEveningPrime {
+            // Sunset glow (golden orange to deep amber)
+            day = SunGlowConfig(
                 coreColor: Color(hex: "ffb74d"),
                 innerColor: Color(hex: "ff9800"),
                 middleColor: Color(hex: "f4511e"),
@@ -525,11 +643,9 @@ struct CircularClockView: View {
                 innerPulseScale: 1.15,
                 outerPulseScale: 1.2
             )
-        }
-        
-        // Midday sun (bright, minimal pulse)
-        if currentHour >= sunTimes.morningPrimeEnd && currentHour < sunTimes.eveningPrimeStart {
-            return SunGlowConfig(
+        } else if currentHour >= sunTimes.morningPrimeEnd && currentHour < sunTimes.eveningPrimeStart {
+            // Midday sun (bright, minimal pulse)
+            day = SunGlowConfig(
                 coreColor: Color(hex: "ffeb3b"),
                 innerColor: Color(hex: "fff176"),
                 middleColor: Color(hex: "fdd835"),
@@ -537,66 +653,74 @@ struct CircularClockView: View {
                 innerPulseScale: 1.05,
                 outerPulseScale: 1.08
             )
+        } else {
+            // Soft orange (only reached on very short days when the prime windows overlap)
+            day = SunGlowConfig(
+                coreColor: Color(hex: "ffcc80"),
+                innerColor: Color(hex: "ffb74d"),
+                middleColor: Color(hex: "ff9800"),
+                outerColor: Color(hex: "f57c00"),
+                innerPulseScale: 1.02,
+                outerPulseScale: 1.03
+            )
         }
         
-        // Dawn/Dusk twilight (soft orange)
-        return SunGlowConfig(
-            coreColor: Color(hex: "ffcc80"),
-            innerColor: Color(hex: "ffb74d"),
-            middleColor: Color(hex: "ff9800"),
-            outerColor: Color(hex: "f57c00"),
-            innerPulseScale: 1.02,
-            outerPulseScale: 1.03
-        )
+        // Fade smoothly between the two around sunrise and sunset.
+        let t = sunTimes.nightBlend(at: currentHour)
+        if t >= 1 { return night }
+        if t <= 0 { return day }
+        return day.blended(with: night, by: t)
     }
     
     func createGradientStops(sunTimes: SunTimes, theme: ClockTheme, inMorningPrime: Bool, inEveningPrime: Bool) -> [Gradient.Stop] {
+        // Polar day / polar night: one solid colour all round.
+        if sunTimes.polar == .day {
+            return [.init(color: theme.daylight, location: 0.0), .init(color: theme.daylight, location: 1.0)]
+        }
+        if sunTimes.polar == .night {
+            return [.init(color: theme.deepNight, location: 0.0), .init(color: theme.deepNight, location: 1.0)]
+        }
+        
         // Smooth blend amount for transitions
         let blend = 0.15  // 9 minutes of blending between segments
         
-        return [
-            // Deep night → Astronomical (smooth blend)
-            .init(color: theme.deepNight, location: 0.0),
-            .init(color: theme.deepNight, location: max(0, (sunTimes.astronomicalStart - blend) / 24.0)),
-            .init(color: theme.astronomical, location: (sunTimes.astronomicalStart + blend) / 24.0),
+        // Ring bands: night -> astronomical -> nautical -> MORNING PRIME (starts at
+        // civil dawn / first light) -> daylight -> EVENING PRIME (ends at civil
+        // dusk / last light) -> nautical -> astronomical -> night.
+        let raw: [(Color, Double)] = [
+            (theme.deepNight, 0.0),
+            (theme.deepNight, sunTimes.astronomicalStart - blend),
+            (theme.astronomical, sunTimes.astronomicalStart + blend),
             
-            // Astronomical → Nautical (smooth blend)
-            .init(color: theme.astronomical, location: max(0, (sunTimes.nauticalStart - blend) / 24.0)),
-            .init(color: theme.nautical, location: (sunTimes.nauticalStart + blend) / 24.0),
+            (theme.astronomical, sunTimes.nauticalStart - blend),
+            (theme.nautical, sunTimes.nauticalStart + blend),
             
-            // Nautical → Civil (smooth blend)
-            .init(color: theme.nautical, location: max(0, (sunTimes.civilStart - blend) / 24.0)),
-            .init(color: theme.civil, location: (sunTimes.civilStart + blend) / 24.0),
+            (theme.nautical, sunTimes.morningPrimeStart - blend),
+            (theme.morningPrime, sunTimes.morningPrimeStart + blend),
+            (theme.morningPrime, sunTimes.morningPrimeEnd - blend),
             
-            // Civil → Morning Prime (smooth blend)
-            .init(color: theme.civil, location: max(0, (sunTimes.sunrise - blend) / 24.0)),
-            .init(color: theme.morningPrime, location: (sunTimes.sunrise + blend) / 24.0),
-            .init(color: theme.morningPrime, location: (sunTimes.morningPrimeEnd - blend) / 24.0),
+            (theme.daylight, sunTimes.morningPrimeEnd + blend),
+            (theme.daylight, sunTimes.eveningPrimeStart - blend),
             
-            // Morning Prime → Daylight (smooth blend)
-            .init(color: theme.daylight, location: (sunTimes.morningPrimeEnd + blend) / 24.0),
-            .init(color: theme.daylight, location: (sunTimes.eveningPrimeStart - blend) / 24.0),
+            (theme.eveningPrime, sunTimes.eveningPrimeStart + blend),
+            (theme.eveningPrime, sunTimes.eveningPrimeEnd - blend),
             
-            // Daylight → Evening Prime (smooth blend)
-            .init(color: theme.eveningPrime, location: (sunTimes.eveningPrimeStart + blend) / 24.0),
-            .init(color: theme.eveningPrime, location: (sunTimes.sunset - blend) / 24.0),
-            
-            // Evening Prime → Civil (smooth blend)
-            .init(color: theme.civil, location: (sunTimes.sunset + blend) / 24.0),
-            .init(color: theme.civil, location: (sunTimes.civilEnd - blend) / 24.0),
-            
-            // Civil → Nautical (smooth blend)
-            .init(color: theme.nautical, location: (sunTimes.civilEnd + blend) / 24.0),
-            .init(color: theme.nautical, location: (sunTimes.nauticalEnd - blend) / 24.0),
-            
-            // Nautical → Astronomical (smooth blend)
-            .init(color: theme.astronomical, location: (sunTimes.nauticalEnd + blend) / 24.0),
-            .init(color: theme.astronomical, location: (sunTimes.astronomicalEnd - blend) / 24.0),
-            
-            // Astronomical → Deep night (smooth blend)
-            .init(color: theme.deepNight, location: (sunTimes.astronomicalEnd + blend) / 24.0),
-            .init(color: theme.deepNight, location: 1.0)
+            (theme.nautical, sunTimes.eveningPrimeEnd + blend),
+            (theme.nautical, sunTimes.nauticalEnd - blend),
+            (theme.astronomical, sunTimes.nauticalEnd + blend),
+            (theme.astronomical, sunTimes.astronomicalEnd - blend),
+            (theme.deepNight, sunTimes.astronomicalEnd + blend),
+            (theme.deepNight, 24.0)
         ]
+        
+        // Keep every stop inside 0...1 and in order, even when bands are very
+        // short or collapsed (high latitudes), so the gradient never misbehaves.
+        var previous = 0.0
+        return raw.map { color, hour in
+            let location = min(1.0, max(previous, hour / 24.0))
+            previous = location
+            return Gradient.Stop(color: color, location: location)
+        }
     }
 }
 
@@ -678,16 +802,40 @@ struct ClockTheme {
 struct SunTimes {
     let sunrise: Double
     let sunset: Double
-    let astronomicalStart: Double
-    let nauticalStart: Double
-    let civilStart: Double
-    let civilEnd: Double
+    let astronomicalStart: Double  // sun 18 degrees below the horizon (dawn side)
+    let nauticalStart: Double      // 12 degrees below (dawn side)
+    let civilStart: Double         // 6 degrees below (dawn side) = civil dawn, "first light"
+    let civilEnd: Double           // 6 degrees below (dusk side) = civil dusk, "last light"
     let nauticalEnd: Double
     let astronomicalEnd: Double
     let morningPrimeStart: Double
     let morningPrimeEnd: Double
     let eveningPrimeStart: Double
     let eveningPrimeEnd: Double
+    let polar: PolarState
+    
+    // Polar day / polar night have no prime windows.
+    func inMorningPrime(at hour: Double) -> Bool {
+        polar == .none && hour >= morningPrimeStart && hour <= morningPrimeEnd
+    }
+    
+    func inEveningPrime(at hour: Double) -> Bool {
+        polar == .none && hour >= eveningPrimeStart && hour <= eveningPrimeEnd
+    }
+    
+    // How "night-coloured" the sun should be at a given hour:
+    //   1 = full red-orange (sunset until sunrise, including first light)
+    //   0 = full gold (daytime)
+    // Fades 1 -> 0 over sunColorBlendHours after sunrise, and 0 -> 1 over the
+    // same length of time leading up to sunset.
+    func nightBlend(at hour: Double) -> Double {
+        if polar == .day { return 0 }
+        if polar == .night { return 1 }
+        if hour < sunrise || hour > sunset { return 1 }
+        if hour < sunrise + sunColorBlendHours { return 1 - (hour - sunrise) / sunColorBlendHours }
+        if hour > sunset - sunColorBlendHours { return (hour - (sunset - sunColorBlendHours)) / sunColorBlendHours }
+        return 0
+    }
 }
 
 struct SunGlowConfig {
@@ -697,6 +845,18 @@ struct SunGlowConfig {
     let outerColor: Color
     let innerPulseScale: CGFloat
     let outerPulseScale: CGFloat
+    
+    // Fades from `self` (t = 0) to `other` (t = 1).
+    func blended(with other: SunGlowConfig, by t: Double) -> SunGlowConfig {
+        SunGlowConfig(
+            coreColor: coreColor.mix(with: other.coreColor, by: t),
+            innerColor: innerColor.mix(with: other.innerColor, by: t),
+            middleColor: middleColor.mix(with: other.middleColor, by: t),
+            outerColor: outerColor.mix(with: other.outerColor, by: t),
+            innerPulseScale: innerPulseScale + (other.innerPulseScale - innerPulseScale) * CGFloat(t),
+            outerPulseScale: outerPulseScale + (other.outerPulseScale - outerPulseScale) * CGFloat(t)
+        )
+    }
 }
 
 // MARK: - Color Extension (Hex Support)
@@ -732,11 +892,7 @@ extension Color {
 }
 
 /*
- IMPORTANT: Add these to your Info.plist for location access:
- 
- <key>NSLocationWhenInUseUsageDescription</key>
- <string>SolCue needs your location to calculate accurate sunrise and sunset times for your area.</string>
- 
- <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
- <string>SolCue needs your location to calculate accurate sunrise and sunset times for your area.</string>
+ NOTE: The Watch's location permission text is set in the target's build settings
+ (INFOPLIST_KEY_NSLocationWhenInUseUsageDescription in project.pbxproj):
+ "SolCue uses your location to find sunrise, sunset, and twilight where you are, so your sun clock matches your sky."
  */

@@ -3,7 +3,13 @@ import React, { useState, useEffect } from "react";
 import { Sun, Moon, Waves, Clock, Info, Camera } from "lucide-react";
 import { useSessionTracking } from "../hooks/useSessionTracking";
 import { useLocation } from "../hooks/useLocation";
-import { calculateSunTimes } from "../lib/sunMath";
+import type { LocationData } from "../hooks/useLocation";
+import {
+  calculateSunTimes,
+  getNightBlend,
+  isInEveningPrime,
+  isInMorningPrime,
+} from "../lib/sunMath";
 import PhotoShare from "./PhotoShare";
 import { captureSunClockImage } from "./UnifiedSunClock";
 import {
@@ -77,8 +83,31 @@ const colorThemes = {
 
 type ClockFormat = "12hr" | "24hr" | "main" | "none";
 
-const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
+// Sun colours: golden by day, red-orange from sunset through first light until
+// sunrise. Around sunrise and sunset the two fade into each other (see
+// getNightBlend in sunMath.ts) so there is never a sudden colour jump.
+const GOLD_SUN = { from: "#fff176", via: "#ffeb3b", to: "#ffc107" };
+const NIGHT_SUN = { from: "#ff8a50", via: "#ff6b35", to: "#d84315" };
+
+const mixHex = (a: string, b: string, t: number) => {
+  const parse = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [ar, ag, ab] = parse(a);
+  const [br, bg, bb] = parse(b);
+  const channel = (x: number, y: number) =>
+    Math.round(x + (y - x) * t)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(ar, br)}${channel(ag, bg)}${channel(ab, bb)}`;
+};
+
+interface SunClockViewProps extends UnifiedSunClockProps {
+  // A real location (fresh or saved). The wrapper below guarantees this.
+  location: LocationData;
+}
+
+const SunClockView: React.FC<SunClockViewProps> = ({
   currentTime = new Date(),
+  location,
 }) => {
   const [time, setTime] = useState(currentTime);
   const [showTides, setShowTides] = useState(false);
@@ -94,12 +123,6 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
     getCurrentSessionElapsed,
     stats,
   } = useSessionTracking();
-
-  // Real GPS location for accurate sun times (Providence, RI fallback).
-  const { location, getCurrentLocation } = useLocation();
-  useEffect(() => {
-    getCurrentLocation();
-  }, []);
 
   console.log("🔍 Hook called, isTracking:", isTracking);
   const theme = colorThemes[currentTheme as keyof typeof colorThemes];
@@ -156,46 +179,14 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
     };
   };
 
-  // Enhanced sun glow - more diffuse with maintained sun color at night
+  // Sun glow colour: golden by day, red-orange from sunset until sunrise
+  // (including first light), fading smoothly around sunrise and sunset.
   const getSunColor = (currentHour: number, sunTimes: any) => {
-    // Sunrise transition: deep orange to golden yellow
-    if (
-      currentHour >= sunTimes.sunrise - 0.5 &&
-      currentHour <= sunTimes.sunrise + 1
-    ) {
-      return {
-        from: "#ff6b35", // Deep orange
-        via: "#ffa726", // Orange
-        to: "#ffd54f", // Golden yellow
-      };
-    }
-
-    // Sunset transition: golden yellow to deep red
-    if (
-      currentHour >= sunTimes.sunset - 1 &&
-      currentHour <= sunTimes.sunset + 0.5
-    ) {
-      return {
-        from: "#ffd54f", // Golden yellow
-        via: "#ff8a65", // Light orange
-        to: "#d32f2f", // Deep red
-      };
-    }
-
-    // Daytime: bright golden sun
-    if (currentHour >= sunTimes.sunrise && currentHour <= sunTimes.sunset) {
-      return {
-        from: "#fff176", // Light yellow
-        via: "#ffeb3b", // Yellow
-        to: "#ffc107", // Amber
-      };
-    }
-
-    // Nighttime: maintain subtle sun color
+    const t = getNightBlend(sunTimes, currentHour);
     return {
-      from: "#ff8a50", // Warm orange (darker but still sun-like)
-      via: "#ff6b35", // Deep orange
-      to: "#d84315", // Dark orange-red
+      from: mixHex(GOLD_SUN.from, NIGHT_SUN.from, t),
+      via: mixHex(GOLD_SUN.via, NIGHT_SUN.via, t),
+      to: mixHex(GOLD_SUN.to, NIGHT_SUN.to, t),
     };
   };
 
@@ -215,10 +206,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
   const minutes = time.getMinutes();
   const currentHour = hours + minutes / 60;
 
-  // Get sun times for the user's current GPS location (Providence, RI fallback)
-  const latitude = location?.latitude ?? 41.8236;
-  const longitude = location?.longitude ?? -71.4222;
-  const sunTimes = calculateSunTimes(latitude, longitude, time);
+  // Get sun times for the user's real location
+  const sunTimes = calculateSunTimes(location.latitude, location.longitude, time);
   const moonData = calculateMoonPosition(time);
   const tideData = calculateTides();
 
@@ -231,12 +220,8 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
   const moonProminence = getMoonProminence(currentHour, sunTimes);
 
   // Check if in prime window
-  const inMorningPrime =
-    currentHour >= sunTimes.morningPrimeStart &&
-    currentHour <= sunTimes.morningPrimeEnd;
-  const inEveningPrime =
-    currentHour >= sunTimes.eveningPrimeStart &&
-    currentHour <= sunTimes.eveningPrimeEnd;
+  const inMorningPrime = isInMorningPrime(sunTimes, currentHour);
+  const inEveningPrime = isInEveningPrime(sunTimes, currentHour);
   const inPrimeWindow = inMorningPrime || inEveningPrime;
 
   // Check if it's after sunset for star visibility
@@ -259,6 +244,14 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
     const y1 = centerY + Math.sin(startAngleRad) * radius;
     const x2 = centerX + Math.cos(endAngleRad) * radius;
     const y2 = centerY + Math.sin(endAngleRad) * radius;
+
+    // A full 24 hours (polar day / polar night) is a whole circle, which a
+    // single arc can't draw, so draw it as two half-circles.
+    if (endHour - startHour >= 24) {
+      return `M ${centerX - radius} ${centerY} A ${radius} ${radius} 0 1 1 ${
+        centerX + radius
+      } ${centerY} A ${radius} ${radius} 0 1 1 ${centerX - radius} ${centerY} Z`;
+    }
 
     const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
 
@@ -865,6 +858,60 @@ const UnifiedSunClock: React.FC<UnifiedSunClockProps> = ({
     </div>
   );
 };
+// The public component. It only draws the clock when we have a REAL location
+// (a fresh fix, or the last real one saved on the device). Otherwise it shows a
+// calm message rather than sun times for somewhere the user isn't.
+const UnifiedSunClock: React.FC<UnifiedSunClockProps> = (props) => {
+  const { location, status, refresh, openSettings } = useLocation();
+
+  if (location) {
+    return <SunClockView {...props} location={location} />;
+  }
+
+  const waiting = status === "idle" || status === "loading";
+  const denied = status === "denied";
+
+  return (
+    <div
+      className="min-h-screen p-4 flex flex-col items-center justify-center text-center"
+      style={{ background: "#000000" }}
+    >
+      <h1 className="text-4xl font-bold text-white drop-shadow-2xl mb-2 tracking-wide">
+        SolCue
+      </h1>
+      <p className="text-lg text-white/90 drop-shadow-lg mb-10">
+        Circadian Light Tracker
+      </p>
+      <p className="text-xl text-white/90 mb-2">
+        {waiting ? "Finding your sun…" : "Turn on location to see your sun."}
+      </p>
+      {!waiting && (
+        <p className="text-white/60 max-w-xs mb-6">
+          {denied
+            ? "SolCue uses your location to find sunrise, sunset, and twilight where you are."
+            : "We couldn't find your location just now."}
+        </p>
+      )}
+      {denied && (
+        <button
+          onClick={openSettings}
+          className="bg-white/15 border border-white/30 text-white px-6 py-3 rounded-xl"
+        >
+          Open Settings
+        </button>
+      )}
+      {status === "unavailable" && (
+        <button
+          onClick={refresh}
+          className="bg-white/15 border border-white/30 text-white px-6 py-3 rounded-xl"
+        >
+          Try again
+        </button>
+      )}
+    </div>
+  );
+};
+
 // STEP 1: Fix sun clock size capture in UnifiedSunClock.tsx
 // Replace the captureSunClockImage function with this version that gets ACTUAL size:
 

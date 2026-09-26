@@ -1,8 +1,8 @@
 // src/hooks/useSessionTracking.tsx - COMPLETE FIXED VERSION
 import { useState, useEffect } from "react";
 import { Preferences } from "@capacitor/preferences";
-import { Geolocation } from "@capacitor/geolocation";
-import { getPrimeStatus, PROVIDENCE_FALLBACK } from "../lib/sunMath";
+import { getPrimeStatus } from "../lib/sunMath";
+import { useLocation } from "./useLocation";
 
 interface Session {
   id: string;
@@ -39,21 +39,17 @@ interface StatsData {
   sessions: Session[];
 }
 
-interface Location {
-  latitude: number;
-  longitude: number;
-}
-
 export const useSessionTracking = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
-  const [userLocation, setUserLocation] = useState<Location | null>(null);
+  // Real location only (fresh fix, or the last real one saved on the device).
+  // There is deliberately no made-up default.
+  const { location: userLocation } = useLocation();
 
   useEffect(() => {
     loadData();
-    getCurrentLocation();
   }, []);
 
   useEffect(() => {
@@ -62,32 +58,6 @@ export const useSessionTracking = () => {
       calculateStats();
     }
   }, [sessions, moodEntries, currentSession]);
-
-  // 📍 GPS LOCATION FUNCTION
-  const getCurrentLocation = async () => {
-    try {
-      // Use the native Capacitor Geolocation plugin so iOS shows the app
-      // name ("SolCue") in the permission prompt instead of "localhost".
-      const position = await Geolocation.getCurrentPosition({
-        timeout: 10000,
-        enableHighAccuracy: false,
-      });
-
-      const location: Location = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-
-      setUserLocation(location);
-      console.log("📍 GPS location:", location);
-      return location;
-    } catch (error) {
-      console.log("⚠️ GPS failed, using Providence, RI fallback:", error);
-      const fallback = { latitude: 41.8236, longitude: -71.4222 };
-      setUserLocation(fallback);
-      return fallback;
-    }
-  };
 
   const loadData = async () => {
     try {
@@ -260,11 +230,12 @@ export const useSessionTracking = () => {
     const now = new Date();
 
     // 🔧 Use the same NOAA-based prime windows the sun clock displays
-    // (sunrise → sunrise+2h in the morning, sunset−2h → sunset in the evening),
-    // computed at the user's GPS location (Providence, RI fallback).
-    const lat = userLocation?.latitude ?? PROVIDENCE_FALLBACK.latitude;
-    const lon = userLocation?.longitude ?? PROVIDENCE_FALLBACK.longitude;
-    const { inMorningPrime, inEveningPrime } = getPrimeStatus(now, lat, lon);
+    // (first light → sunrise+2h in the morning, sunset−2h → last light in the
+    // evening), computed at the user's real location. With no real location
+    // we can't know the windows, so the session simply doesn't qualify.
+    const { inMorningPrime, inEveningPrime } = userLocation
+      ? getPrimeStatus(now, userLocation.latitude, userLocation.longitude)
+      : { inMorningPrime: false, inEveningPrime: false };
 
     console.log(
       `⏰ Session start: ${now.toLocaleTimeString()} — morning prime ${
@@ -276,7 +247,12 @@ export const useSessionTracking = () => {
       id: Date.now().toString(),
       startTime: now,
       type,
-      location: userLocation || undefined,
+      location: userLocation
+        ? {
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+          }
+        : undefined,
       inMorningPrime,
       inEveningPrime,
       qualifiesForStreak: inMorningPrime || inEveningPrime, // Only prime time qualifies

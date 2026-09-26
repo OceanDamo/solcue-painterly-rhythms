@@ -4,42 +4,68 @@
 //
 // Real astronomical calculation for any date and location, ported from the
 // NOAA Solar Calculator algorithm used in the Watch app
-// (ios/App/SolCue Watch Watch App/ContentView.swift).
+// (ios/App/SolCue Watch Watch App/ContentView.swift). The Watch keeps a
+// line-for-line Swift copy of this file - if you change a rule here, change
+// it there too.
 // Source: https://gml.noaa.gov/grad/solcalc/calcdetails.html
 //
 // Both the visual sun clock (UnifiedSunClock) and the streak / session
 // tracking logic (useSessionTracking) consume these functions so that the
 // "prime circadian windows" they reason about are always identical.
 
-// Default location (Providence, RI) used whenever GPS is unavailable.
-export const PROVIDENCE_FALLBACK = {
-  latitude: 41.8236,
-  longitude: -71.4222,
-};
-
 // A session must be at least this many minutes (and fall in a prime window)
 // to count toward the day streak.
 export const STREAK_MIN_MINUTES = 10;
 
+// Sun zenith angles (degrees from straight up) for each kind of dawn/dusk.
+// 90.833 is sunrise/sunset (sun's centre 50 arc-minutes below the horizon,
+// which accounts for atmospheric refraction and the sun's radius).
+const ZENITH_SUNRISE = 90.833;
+const ZENITH_CIVIL = 96; // sun 6 degrees below the horizon
+const ZENITH_NAUTICAL = 102; // sun 12 degrees below the horizon
+const ZENITH_ASTRONOMICAL = 108; // sun 18 degrees below the horizon
+
+// How long (in hours) the sun's colour takes to fade between red-orange and
+// golden around sunrise and sunset. Same length on both ends of the day.
+export const SUN_COLOR_BLEND_HOURS = 0.75;
+
+// "none"  - the sun rises and sets normally today.
+// "day"   - polar day: the sun never sets today (midnight sun).
+// "night" - polar night: the sun never rises today.
+export type PolarState = "none" | "day" | "night";
+
 export interface SunTimes {
   sunrise: number;
   sunset: number;
-  astronomicalNightEnd: number;
-  nauticalTwilightEnd: number;
-  civilTwilightEnd: number;
-  civilTwilightStart: number;
-  nauticalTwilightStart: number;
-  astronomicalNightStart: number;
+  astronomicalNightEnd: number; // sun reaches 18 degrees below (dawn side)
+  nauticalTwilightEnd: number; // 12 degrees below (dawn side)
+  civilTwilightEnd: number; // 6 degrees below (dawn side) = civil dawn, "first light"
+  civilTwilightStart: number; // 6 degrees below (dusk side) = civil dusk, "last light"
+  nauticalTwilightStart: number; // 12 degrees below (dusk side)
+  astronomicalNightStart: number; // 18 degrees below (dusk side)
   solarNoon: number;
-  // Prime circadian windows - first 2 hours after sunrise and last 2 hours
-  // before sunset, expressed in local clock hours.
+  // Prime circadian windows: first light -> 2 hours after sunrise, and
+  // 2 hours before sunset -> last light. Local clock hours.
   morningPrimeStart: number;
   morningPrimeEnd: number;
   eveningPrimeStart: number;
   eveningPrimeEnd: number;
+  // Polar-day / polar-night flag. When not "none" there are no prime windows.
+  polar: PolarState;
 }
 
+const clampHour = (h: number) => Math.min(24, Math.max(0, h));
+
 // All values are returned in local clock hours (e.g. 5.5 = 5:30 AM).
+//
+// Polar / high-latitude handling (never returns NaN):
+//  - If the sun never rises today -> polar = "night" (ring drawn as all night).
+//  - If the sun never sets today  -> polar = "day"   (ring drawn as all day).
+//  - If the sun never gets deep enough for a given twilight (e.g. no true
+//    darkness on a summer night at 60 degrees north), that twilight boundary
+//    collapses onto the next-lighter one (astronomical -> nautical -> civil
+//    -> sunrise/sunset), so the bands simply vanish instead of misbehaving.
+//  - Times that would spill past midnight are clamped to the 0-24 range.
 export const calculateSunTimes = (
   lat: number,
   lon: number,
@@ -130,45 +156,119 @@ export const calculateSunTimes = (
           Math.sin(2.0 * toRad(geomMeanAnomSun))
     );
 
-  // Hour Angle of Sunrise (degrees), using the 90.833° zenith for refraction
-  const haSunrise = toDeg(
-    Math.acos(
-      Math.cos(toRad(90.833)) /
+  // Hour angle (degrees) at which the sun's centre sits at the given zenith
+  // angle. Returns null when that angle is never reached today (cos out of
+  // range) or the maths is not a number.
+  const hourAngleFor = (zenith: number): number | null => {
+    const cosH =
+      Math.cos(toRad(zenith)) /
         (Math.cos(toRad(lat)) * Math.cos(toRad(sunDeclin))) -
-        Math.tan(toRad(lat)) * Math.tan(toRad(sunDeclin))
-    )
-  );
+      Math.tan(toRad(lat)) * Math.tan(toRad(sunDeclin));
+    if (!Number.isFinite(cosH) || cosH > 1 || cosH < -1) return null;
+    return toDeg(Math.acos(cosH));
+  };
 
   // Local timezone offset in hours (east of GMT positive)
   const timeZoneOffset = -date.getTimezoneOffset() / 60.0;
 
-  // Solar noon and sunrise/sunset, expressed in local clock hours
+  // Solar noon in local clock hours
   const solarNoon = (720.0 - 4.0 * lon - eqTime + timeZoneOffset * 60.0) / 60.0;
-  const sunrise = solarNoon - (haSunrise * 4.0) / 60.0;
-  const sunset = solarNoon + (haSunrise * 4.0) / 60.0;
 
-  // Twilight calculations (in hours before/after sunrise/sunset)
-  const astronomicalTwilight = 1.5;
-  const nauticalTwilight = 0.9;
-  const civilTwilight = 0.4;
+  const hourAt = (ha: number, sign: 1 | -1) =>
+    clampHour(solarNoon + (sign * ha * 4.0) / 60.0);
+
+  const sunHa = hourAngleFor(ZENITH_SUNRISE);
+
+  if (sunHa === null) {
+    // Sun never crosses the horizon today. Decide which way from the sun's
+    // height at solar noon: above the horizon all day = polar day.
+    const noonZenith = Math.abs(lat - sunDeclin);
+    const polar: PolarState =
+      Number.isFinite(noonZenith) && noonZenith < ZENITH_SUNRISE
+        ? "day"
+        : "night";
+    // "day": sunrise at 0, sunset at 24 (always up). "night": both at 24,
+    // so every hour reads as "before sunrise" (always down).
+    const rise = polar === "day" ? 0 : 24;
+    const set = 24;
+    return {
+      sunrise: rise,
+      sunset: set,
+      astronomicalNightEnd: rise,
+      nauticalTwilightEnd: rise,
+      civilTwilightEnd: rise,
+      civilTwilightStart: set,
+      nauticalTwilightStart: set,
+      astronomicalNightStart: set,
+      solarNoon,
+      morningPrimeStart: rise,
+      morningPrimeEnd: rise,
+      eveningPrimeStart: set,
+      eveningPrimeEnd: set,
+      polar,
+    };
+  }
+
+  // Each twilight falls back to the next-lighter one when it never occurs.
+  const civilHa = hourAngleFor(ZENITH_CIVIL) ?? sunHa;
+  const nauticalHa = hourAngleFor(ZENITH_NAUTICAL) ?? civilHa;
+  const astronomicalHa = hourAngleFor(ZENITH_ASTRONOMICAL) ?? nauticalHa;
+
+  const sunrise = hourAt(sunHa, -1);
+  const sunset = hourAt(sunHa, 1);
+  const civilDawn = hourAt(civilHa, -1);
+  const civilDusk = hourAt(civilHa, 1);
 
   return {
     sunrise,
     sunset,
-    astronomicalNightEnd: sunrise - astronomicalTwilight,
-    nauticalTwilightEnd: sunrise - nauticalTwilight,
-    civilTwilightEnd: sunrise - civilTwilight,
-    civilTwilightStart: sunset + civilTwilight,
-    nauticalTwilightStart: sunset + nauticalTwilight,
-    astronomicalNightStart: sunset + astronomicalTwilight,
+    astronomicalNightEnd: hourAt(astronomicalHa, -1),
+    nauticalTwilightEnd: hourAt(nauticalHa, -1),
+    civilTwilightEnd: civilDawn,
+    civilTwilightStart: civilDusk,
+    nauticalTwilightStart: hourAt(nauticalHa, 1),
+    astronomicalNightStart: hourAt(astronomicalHa, 1),
     solarNoon,
 
-    // Prime circadian windows - 2 hours after sunrise and 2 hours before sunset
-    morningPrimeStart: sunrise,
-    morningPrimeEnd: sunrise + 2,
-    eveningPrimeStart: sunset - 2,
-    eveningPrimeEnd: sunset,
+    // Prime circadian windows:
+    //   morning = civil dawn ("first light") -> sunrise + 2 hours
+    //   evening = sunset - 2 hours -> civil dusk ("last light")
+    morningPrimeStart: civilDawn,
+    morningPrimeEnd: clampHour(sunrise + 2),
+    eveningPrimeStart: clampHour(sunset - 2),
+    eveningPrimeEnd: civilDusk,
+    polar: "none",
   };
+};
+
+// Whether a local clock hour (e.g. 6.5 = 6:30 AM) is inside a prime window.
+// Polar day / polar night have no prime windows.
+export const isInMorningPrime = (sunTimes: SunTimes, hour: number): boolean =>
+  sunTimes.polar === "none" &&
+  hour >= sunTimes.morningPrimeStart &&
+  hour <= sunTimes.morningPrimeEnd;
+
+export const isInEveningPrime = (sunTimes: SunTimes, hour: number): boolean =>
+  sunTimes.polar === "none" &&
+  hour >= sunTimes.eveningPrimeStart &&
+  hour <= sunTimes.eveningPrimeEnd;
+
+// How "night-coloured" the sun should be at a given local clock hour:
+//   1 = full red-orange (sunset until sunrise, including first light)
+//   0 = full gold (daytime)
+// It fades from 1 to 0 over the SUN_COLOR_BLEND_HOURS after sunrise, and
+// from 0 to 1 over the same length of time leading up to sunset.
+export const getNightBlend = (sunTimes: SunTimes, hour: number): number => {
+  if (sunTimes.polar === "day") return 0;
+  if (sunTimes.polar === "night") return 1;
+
+  const blend = SUN_COLOR_BLEND_HOURS;
+  const { sunrise, sunset } = sunTimes;
+
+  if (hour < sunrise || hour > sunset) return 1;
+  if (hour < sunrise + blend) return 1 - (hour - sunrise) / blend;
+  if (hour > sunset - blend) return (hour - (sunset - blend)) / blend;
+  return 0;
 };
 
 export interface PrimeStatus {
@@ -189,9 +289,7 @@ export const getPrimeStatus = (
   const hour = date.getHours() + date.getMinutes() / 60;
 
   return {
-    inMorningPrime:
-      hour >= sunTimes.morningPrimeStart && hour <= sunTimes.morningPrimeEnd,
-    inEveningPrime:
-      hour >= sunTimes.eveningPrimeStart && hour <= sunTimes.eveningPrimeEnd,
+    inMorningPrime: isInMorningPrime(sunTimes, hour),
+    inEveningPrime: isInEveningPrime(sunTimes, hour),
   };
 };

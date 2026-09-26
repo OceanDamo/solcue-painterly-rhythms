@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>SolCue needs your location to calculate accurate sunrise and sunset times for your area.</string>
+	<string>SolCue uses your location to find sunrise, sunset, and twilight where you are, so your sun clock matches your sky.</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -50,6 +50,6 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SolCue uses your photo library to save and share your light exposure moments.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>SolCue needs your location to calculate accurate sunrise and sunset times for your area.</string>
+	<string>SolCue uses your location to find sunrise, sunset, and twilight where you are, so your sun clock matches your sky.</string>
 </dict>
 </plist>

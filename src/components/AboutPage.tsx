@@ -93,6 +93,22 @@ const AboutPage: React.FC<AboutPageProps> = ({ currentTime }) => {
             </div>
           </div>
 
+          {/* Glow Windows */}
+          <div className="bg-black/60 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-black/30 rounded-2xl"></div>
+            <div className="relative z-10">
+              <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow-lg">Your glow windows</h2>
+              <h3 className="text-lg font-medium text-white mb-1 drop-shadow-lg">Morning</h3>
+              <p className="text-white/90 leading-relaxed mb-4">
+                The sun pulses and glows from first light through 2 hours after sunrise. Best time to head outside and set your rhythm for the day
+              </p>
+              <h3 className="text-lg font-medium text-white mb-1 drop-shadow-lg">Evening</h3>
+              <p className="text-white/90 leading-relaxed">
+                The sun pulses and glows from 2 hours before sunset until last light. Anchor your nervous system for deep, restorative sleep
+              </p>
+            </div>
+          </div>
+
           {/* Company Info */}
           <div className="bg-black/60 backdrop-blur-md rounded-2xl p-6 border border-white/20 shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-black/30 rounded-2xl"></div>
